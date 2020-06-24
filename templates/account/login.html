@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load i18n %}
+{% load account socialaccount %}
+{% load socialaccount %}
+{% block head_title %}{% trans "Signup" %}{% endblock %}
+{% block content %}
+
+    <div class="container-fluid h-100">
+        <div class="row h-100 justify-content-around align-items-center">
+
+            <div class="col-md-4">
+                <form class="text-center border border-light p-5 signup" id="signup_form" method="post"
+                      action="{% url 'account_signup' %}" style="background-color: rgba(245,221,93,0.63)">
+
+                    <p class="h4 mb-4">Sign up</p>
+                    {% csrf_token %}
+                    <div class="form-row mb-4">
+                        <div class="col">
+                            <!-- First name -->
+                            <input type="text"
+                                   id="defaultRegisterFormFirstName"
+                                   name="{{ form.name.username }}"
+                                   class="form-control"
+                                   placeholder="User name">
+                        </div>
+                        <div class="col">
+                            <!-- Last name -->
+                            <input type="text"
+                                   id="defaultRegisterFormLastName"
+
+                                   class="form-control"
+                                   placeholder="Last name">
+                        </div>
+                    </div>
+
+                    <!-- E-mail -->
+                    <input type="email"
+                           id="defaultRegisterFormEmail"
+                           class="form-control mb-4"
+                           name="{{ form.name.email }}"
+                           placeholder="E-mail">
+
+                    <!-- Password -->
+                    <input type="password"
+                           id="defaultRegisterFormPassword"
+                           class="form-control"
+                           name="{{ form.name.password }}"
+                           placeholder="Password"
+                           aria-describedby="defaultRegisterFormPasswordHelpBlock">
+                    <small id="defaultRegisterFormPasswordHelpBlock" class="form-text text-muted mb-4">
+                        At least 8 characters and 1 digit
+                    </small>
+                    <!-- Sign up button -->
+                    <button class="btn btn-info my-4 btn-block" type="submit">Sign in</button>
+
+                    <!-- Social register -->
+                    <p>or sign up with:</p>
+
+                    {% load socialaccount %}
+                    {% providers_media_js %}
+                    <a href="{% provider_login_url "google" method="js_sdk" %}"
+                       class="btn btn-white btn-rounded z-depth-1a" role="button">
+                        <i class="fab fa-google-plus-g blue-text"></i></a>
+
+                    <hr>
+
+                    <!-- Terms of service -->
+                    <p>By clicking
+                        <em>Sign up</em> you agree to our
+                        <a href="" target="_blank">terms of service</a>
+
+                </form>
+            </div>
+
+            <div class="col-md-4">
+                <form class="border border-light p-5 login" method="POST" action="{% url 'account_login' %}"
+                      style="background-color: rgba(245,221,93,0.63)">
+                    <p class="h4 mb-4 text-center">Sign in</p>
+                    {% csrf_token %}
+                    <input type="email"
+                           id="defaultLoginFormEmail"
+                           class="form-control mb-4"
+                           name="{{ form.name.email }}"
+                           placeholder="E-mail">
+
+                    <input type="password"
+                           id="defaultLoginFormPassword"
+                           class="form-control mb-4"
+                           name="{{ form.name.password }}"
+                           placeholder="Password">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox"
+                                       name="{{ form.name.remember }}"
+                                       class="custom-control-input"
+                                       id="defaultLoginFormRemember">
+                                <label class="custom-control-label" for="defaultLoginFormRemember">Remember me</label>
+                            </div>
+                        </div>
+                        <div>
+                            <a class="button secondaryAction" href="{% url 'account_reset_password' %}">{% trans "Forgot Password?" %}</a>
+                        </div>
+                    </div>
+                    <button class="primaryAction btn btn-info btn-block my-4" type="submit">{% trans "Sign In" %}</button>
+                    <div class="text-center">
+                        <p>or sign in with:</p>
+                        {% load socialaccount %}
+                        {% providers_media_js %}
+                        <a href="{% provider_login_url "google" method="js_sdk" %}"
+                           class="btn btn-white btn-rounded z-depth-1a" role="button">
+                            <i class="fab fa-google-plus-g blue-text"></i></a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+
