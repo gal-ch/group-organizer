@@ -30,6 +30,12 @@ class EventCreate(CreateView):
 
     def post(self, request, *args, **kwargs):
         if self.request.is_ajax and self.request.method == "POST":
+            ''' 
+            get event data from the client, 
+            convert the time
+            save the event to the data base
+            send to the client the event id and the converted start and end time of the event
+            '''
             form = self.form_class(self.request.POST)
             current_tz = timezone.get_current_timezone()
             date_start_string = '{} {}'.format(request.POST.get('date'), request.POST.get('start_hour'))

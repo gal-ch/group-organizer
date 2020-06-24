@@ -15,7 +15,6 @@ import os
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
 
@@ -26,7 +25,6 @@ SECRET_KEY = 'vvk!n3^5@ozbf__nv-fb$v^b1gi8lo%t$&qb_v7hpe0@!qj^_n'
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -49,7 +47,6 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'rest_framework',
-
 
 ]
 
@@ -83,7 +80,6 @@ TEMPLATES = [
     },
 ]
 
-
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
@@ -99,10 +95,10 @@ REST_FRAMEWORK = {
 }
 
 WSGI_APPLICATION = 'GroupCal.wsgi.application'
-#ASGI_APPLICATION = "GroupCal.routing.application"
+# ASGI_APPLICATION = "GroupCal.routing.application"
 
-#1018058196204-tgoburo1luebkl2in63ls90cskdb3me3.apps.googleusercontent.com
-#NYl6x9q1PW8DYeV9f7VtSAxA
+# 1018058196204-tgoburo1luebkl2in63ls90cskdb3me3.apps.googleusercontent.com
+# NYl6x9q1PW8DYeV9f7VtSAxA
 
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
@@ -113,7 +109,6 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
-
 
 # CHANNEL_LAYERS = {
 #     "default": {
@@ -143,7 +138,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
 
@@ -158,7 +152,6 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
@@ -168,8 +161,10 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
 
-
 LOGIN_REDIRECT_URL = '/calendar'
+LOGIN_URL = '/accounts/login'
+ACCOUNT_LOGOUT_REDIRECT_URL = "/accounts/login"
+# LOGOUT_REDIRECT_URL = '/accounts/login'
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = True

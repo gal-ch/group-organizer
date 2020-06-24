@@ -11,8 +11,8 @@ class JointLoginSignupView(LoginView):
         super(JointLoginSignupView, self).__init__(*kwargs)
 
     def get_context_data(self, **kwargs):
+        print('hgghghghgh')
         ret = super(JointLoginSignupView, self).get_context_data(**kwargs)
-
         ret['signup_form'] = get_form_class(app_settings.FORMS, 'signup', self.signup_form)
         return ret
 

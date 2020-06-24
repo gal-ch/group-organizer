@@ -1,5 +1,4 @@
 <!-- GroupCal/templates/main/calendar.html -->
-
 {% extends 'base.html' %}
 {% load get_dict_item %}
 {% block script %}
@@ -45,7 +44,6 @@
                         $("#id_charge_num").attr('disabled', !this.checked)
                     });
                     $('#eventForm').submit(function (e) {
-                        console.log('jhgffghfhfg',info);
                         e.preventDefault();
                         let title=$('#id_title').val();
                         let description=$('#id_description').val();
@@ -66,6 +64,10 @@
                                 csrfmiddlewaretoken: '{{ csrf_token }}',
                             },
                             success: function (response) {
+                                /** event has created
+                                 * hide the form window
+                                 * add the event to the calendar
+                                 ***/
                                 $('#createEventModal').modal('hide');
                                 let new_event = {
                                     id: response.instance_id,
@@ -93,7 +95,7 @@
                     current_event = info;
                     console.log(current_event);
 
-                    /*** fach the event data from the server and display the info according to the his type (to do or not to do)
+                    /*** fetch the event data from the server and display the info according to the his type (to do or not to do)
                      * check if someone need to do the event:
                      *  info.event.extendedProps.to_do === 'False':
                      *  dont show the list of users that in charge to do the event
@@ -285,6 +287,8 @@
                             <button type="button" class="btn btn-secondary">Add Event</button>
                             <button type="button" class="btn btn-secondary">See your event</button>
                             <button type="button" class="btn btn-secondary">Add users</button>
+                            <a type="button" class="btn btn-secondary" href={% url 'account_logout' %}>Logout</a>
+
                         </div>
                     </div>
                 </div>
