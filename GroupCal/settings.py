@@ -90,6 +90,7 @@ REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
     'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.DjangoModelPermissions',
         'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
     ]
 }
@@ -161,10 +162,11 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
 
+# AUTH_USER_MODEL = 'accounts.User'
+
 LOGIN_REDIRECT_URL = '/calendar'
 LOGIN_URL = '/accounts/login'
 ACCOUNT_LOGOUT_REDIRECT_URL = "/accounts/login"
-# LOGOUT_REDIRECT_URL = '/accounts/login'
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = True

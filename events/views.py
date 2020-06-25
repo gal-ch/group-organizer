@@ -1,27 +1,14 @@
-from rest_framework.decorators import api_view
+from django.contrib.auth.models import Group
+from rest_framework import permissions
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from django.http import HttpResponseRedirect
-from django.shortcuts import render, get_object_or_404, redirect
-from django.urls import reverse
 from django.views.generic import CreateView, UpdateView
 from events.forms import EventForm
 from events.models import Event
 from django.http import JsonResponse
 import datetime
 from django.utils import timezone
-
-
-def event(request, event_id=None):
-    instance = Event()
-    if event_id:
-        instance = get_object_or_404(Event, pk=event_id)
-    else:
-        instance = Event()
-    form = EventForm(request.POST or None, instance=instance)
-    if request.POST and form.is_valid():
-        form.save()
-        return HttpResponseRedirect(reverse('main:calendar'))
-    return render(request, 'events/event.html', {'form': form})
+from events.serializers import EventSerializer
 
 
 class EventCreate(CreateView):
@@ -34,10 +21,13 @@ class EventCreate(CreateView):
             get event data from the client, 
             convert the time
             save the event to the data base
+            add the event to the current group
             send to the client the event id and the converted start and end time of the event
             '''
             form = self.form_class(self.request.POST)
             current_tz = timezone.get_current_timezone()
+            group_id = request.POST.get('current_group')
+            group_obj = Group.objects.get(id=group_id)
             date_start_string = '{} {}'.format(request.POST.get('date'), request.POST.get('start_hour'))
             date_end_string = '{} {}'.format(request.POST.get('date'),  request.POST.get('end_hour'))
             start_t = datetime.datetime.strptime(date_start_string, "%Y-%m-%d %H:%M:%S")
@@ -55,6 +45,7 @@ class EventCreate(CreateView):
                 new_event.start_time = start_date
                 new_event.end_time = end_date
                 new_event = form.save(commit=True)
+                group_obj.events.add(new_event)
                 response = {
                     "instance_id": new_event.id,
                     "start_time": new_event.start_time,
@@ -65,10 +56,6 @@ class EventCreate(CreateView):
             else:
                 return JsonResponse({"error": form.errors}, status=400)
         return JsonResponse({"error": ""}, status=400)
-
-
-def update_event(request):
-    print(request.GET.get('event_id'))
 
 
 def event_change_date(request):
@@ -82,3 +69,22 @@ def event_change_date(request):
         event_obj.save()
         return JsonResponse({'success': 'success'}, status=200)
     return JsonResponse({"error": ""}, status=400)
+
+
+@api_view(['GET'])
+@permission_classes((permissions.AllowAny,))
+def eventDetail(request, pk):
+    tasks = Event.objects.get(id=pk)
+    print(tasks)
+    serializer = EventSerializer(tasks, many=False)
+    print(serializer)
+    return Response(serializer.data)
+
+
+@api_view(['PUT'])
+@permission_classes((permissions.AllowAny,))
+def eventUpdate(request, pk):
+    event = Event.objects.get(id=pk)
+    response = event.check_if(request.user.pk)
+    print(response)
+    return Response(response)

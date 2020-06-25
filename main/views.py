@@ -1,5 +1,6 @@
 from django.conf import settings
-from django.http import JsonResponse
+from django.contrib.auth.models import Group
+from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import redirect
 from django.views import generic
 from events.forms import EventForm
@@ -8,45 +9,49 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
-class CalendarView(generic.ListView):
-    model = Event
+class CalendarView(generic.DetailView):
+    model = Group
     template_name = 'main/calendar.html'
 
     def dispatch(self, request, *args, **kwargs):
-        ''' checks if the user is logged in and if he created a profile -
-         if not he will be redirected to  the create profile page '''
-        if request.user.is_authenticated:
+        user = request.user
+        ''' checks if the user is logged in and a member in the current group -
+        if not he will be redirected to login page or his group calendar 
+        and if he is not member of any he will be redirect to create a group '''
+        if user.is_authenticated:
+            try:
+                self.get_object().user_set.get(id=user.pk)
+            except:
+                if user.groups.first() is not None:
+                    return HttpResponseRedirect('main:calendar', kwargs={'pk': user.groups.first().id})
+                else:
+                    return HttpResponseRedirect('create-group')
             return super(CalendarView, self).dispatch(request, *args, **kwargs)
         return redirect('%s?next=%s' % (settings.LOGIN_URL, request.path))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['eventForm'] = EventForm()
-        events = Event.objects.all()
+        '''get the event related to current group'''
+        user = self.request.user
+        events_group = self.object.events.all()
         context['events'] = [{'id': o.id, 'title': o.title, 'description': o.description,
                               'start': o.start_time.isoformat(), 'end': o.end_time.isoformat(),
                               'allDay': True, 'to_do': o.take_on_event, 'charge_num': o.charge_num,
-                              'user_id': o.user_id} for o in events]
-        context['users_in_group'] = User.objects.all()
-        context['user'] = self.request.user
+                              'user_id': o.user_id} for o in events_group]
+        context['users_in_group'] = self.object.user_set.all()
+        context['user_groups'] = Group.objects.filter(user=user)
+        context['manger_perm'] = user.has_perm('auth.change_group')
+        context['eventForm'] = EventForm()
         return context
 
 
 def get_charge_users(request):
-
     event_obj = Event.objects.get(id=request.GET.get('event_id'))
     users_list = event_obj.get_charge_users()
     print(users_list)
     response_data = {'users_list': users_list}
     return JsonResponse(response_data)
 
-
-def user_to_charge_list(request):
-    ''' get user from client and add to in charge list (check that the user is valid)'''
-    check_user = Event.objects.get(id=request.GET.get('event_id')).check_if(request.user.pk)
-    data = {'check_user': check_user, 'name': request.user.username}
-    d = User.objects.filter(event=request.GET.get('event_id'), in_charge=request.user.pk)
-    return JsonResponse(data)
 
 
 

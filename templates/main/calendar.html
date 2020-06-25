@@ -2,13 +2,18 @@
 {% extends 'base.html' %}
 {% load get_dict_item %}
 {% block script %}
-
     <script>
+    /** to do:
+     * fix event update
+     * delete users fro groups
+     * permissions
+     * see event ?
+     * delete events
+     **/
         document.addEventListener('DOMContentLoaded', function() {
             function get_calendar_height() {
                 return $(window).height()-30;
             }
-            let user_id = '{{ user.pk }}';
             let add_to_in_charge_msg = document.getElementById("success-alert");
             let current_event = null;
             let calendarEl = document.getElementById('calendar');
@@ -54,6 +59,7 @@
                             type: 'POST',
                             url: '{%  url "events:event-create" %}',
                             data: {
+                                current_group: '{{ object.pk }}',
                                 title: title,
                                 description: description,
                                 start_hour: $('#id_start_hour').val(),
@@ -91,11 +97,13 @@
                 },
 
                 eventClick: function(info) {
+                    /**event window is open so user can:
+                     * add them self to users in charge list
+                     * update the event (if they created it -- verify in update_event_window(info))
+                     **/
                     info.jsEvent.preventDefault();
                     current_event = info;
-                    console.log(current_event);
-
-                    /*** fetch the event data from the server and display the info according to the his type (to do or not to do)
+                    /*** fetch the event data from the server and display the info according to it type (to do or not to do)
                      * check if someone need to do the event:
                      *  info.event.extendedProps.to_do === 'False':
                      *  dont show the list of users that in charge to do the event
@@ -106,46 +114,44 @@
                      * show the list in event window
                      *
                      ***/
-                    if (info.event.extendedProps.to_do === 'False'){
+                    if (info.event.extendedProps.to_do === 'False') {
                         clear_event_data();
                         update_event_window(info);
-                    }
-                    else{
-                        $.ajax({
-                            type: 'GET',
-                            url: '{%  url "main:ajax_get_users_list" %}',
-                            data: {
-                                event_id: info.event.id,
+                    } else {
+                        fetch(`http://127.0.0.1:8000/event-detail/${info.event.id}/`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-type': 'application/json',
                             },
-                            success: function (json) {
-                                /**event window is open so user can:
-                                 * add them self to users in charge list
-                                 * update the event (if they created it -- verify in update_event_window(info))
-                                 *
-                                 * **/
+                        }).then(response => response.json())
+                            .then(data => {
+                                console.log(data);
+                                show_in_charge_users(data.charge_users);
                                 clear_event_data();
-                                show_in_charge_users(json.users_list);
                                 update_event_window(info);
                                 document.getElementById("eventToDoBtn").addEventListener("click", function () {
-                                    /** event is a to do event and user want to add himself to the list of user
-                                     * that in charge -->> check with the server:
+                                    /** event is a to do event and user want to add himself to
+                                     * the list of users that in charge -->> check with the server:
                                      * that the user is not in the list
                                      * the list is not full
-                                     * the event is a to event (just in case)
+                                     * the event is a to do event (just in case)
                                      **/
-                                    $.ajax({
-                                        type: 'GET',
-                                        url: '{%  url "main:ajax_user_to_charge_list" %}',
-                                        data: {
-                                            event_id: info.event.id,
+                                    fetch(`http://127.0.0.1:8000/event-update-users/${info.event.id}/`, {
+                                        method: 'PUT',
+                                        headers: {
+                                            'Content-type': 'application/json',
+                                            'X-CSRFToken':'{{ csrf_token }}',
                                         },
-                                        success: function(data) {
-                                            switch (data.check_user) {
+                                    })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            console.log(data);
+                                            switch (data) {
                                                 case 0:
                                                     let ul = document.getElementById("eventChargeUsers");
                                                     let li = document.createElement('li');
-                                                    li.className ="list-group-item";
-                                                    li.appendChild(document.createTextNode(data.name));
+                                                    li.className = "list-group-item";
+                                                    li.appendChild(document.createTextNode('{{ user }}'));
                                                     ul.appendChild(li);
                                                     break;
                                                 case 1:
@@ -157,20 +163,12 @@
                                                     add_to_in_charge_msg.style.display = 'block';
                                                     break;
                                             }
-                                        },
-                                        error : function(xhr,errmsg,err) {
-                                            console.log(xhr.status + ": " + xhr.responseText);
-                                        }
-                                    });
+                                        });
                                 });
-
-                            },
-                            error : function(xhr,errmsg,err) {
-                                console.log(xhr.status + ": " + xhr.responseText);
-                            }
-                        });
+                            });
                     }
                 },
+
                 eventDrop: function (info) {
                     {#if (info.event.start !== info.oldEvent.start || info.event.end !== info.oldEvent.end){#}
                     $.ajax({
@@ -200,9 +198,9 @@
                 document.getElementById("eventStart").innerHTML = info.event.start;
                 document.getElementById("eventEnd").innerHTML = info.event.end;
                 document.getElementById("eventToDoBtn").disabled = info.event.extendedProps.to_do === "False";
-                console.log(user_id);
+                console.log('{{ user.pk }}');
                 console.log(info.event.extendedProps.user_id);
-                if(user_id === info.event.extendedProps.user_id){
+                if('{{ user.pk }}' === info.event.extendedProps.user_id){
                     document.getElementById('UpdateEventBtn').style.display ='inline';
                     document.getElementById('UpdateEventBtn').addEventListener("click", function () {
                         $('#eventDetails').modal('hide');
@@ -220,6 +218,7 @@
                 let ul = document.getElementById("eventChargeUsers");
                 for (let i = 0; i < users_list.length; i++){
                     let name = users_list[i];
+                    console.log(name);
                     let li = document.createElement('li');
                     li.className ="list-group-item";
                     li.appendChild(document.createTextNode(name));
@@ -228,7 +227,6 @@
             }
 
             function update_event_form(info){
-                console.log(calendar.events());
                 console.log(info);
                 document.getElementById("id_title").value = info.event.title;
                 document.getElementById("id_description").value = info.event.extendedProps.description.toString();
@@ -236,11 +234,8 @@
                 document.getElementById("id_charge_num").value = info.event.extendedProps.charge_num;
                 {#document.getElementById("id_start_hour").op = ;#}
                 {#document.getElementById("id_end_hour").value = ;#}
-                calendar.dateClick();
                 $('#createEventModal').modal('show');
             }
-
-
             function clear_event_data() {
                 document.getElementById("eventLabel").innerHTML = '';
                 document.getElementById("eventDescription").innerHTML = '';
@@ -251,11 +246,34 @@
                 add_to_in_charge_msg.style.display = 'none';
             }
         });
+        function open_users_manager_window(){
+            $('#manageUsersWindow').modal('show');
+            let user_pk = 1;
+            document.getElementById('DeleteUsersBtn').addEventListener('click', function () {
+                var url =`http://127.0.0.1:8000/event-detail/${user_pk}/`;
+                fetch( url,{
+                    method:'DELETE',
+                    headers:{
+                        'Content-type':'application/json',
+                        'X-CSRFToken':'{{ csrf_token }}',
+                    },
+                }).then(response  => response.json())
+                    .then(data => {
+                        console.log(data.id);
+                    }).catch(function(error){
+                    console.log('ERROR:', error)
+                })
+
+            })
+        }
+
+
     </script>
 {% endblock %}
 
 {% block content %}
     <div class="container-fluid p-2">
+
         <div class="row ">
             <div class="col" id='calendar'></div>
 
@@ -286,15 +304,52 @@
                         <div class="collapse multi-collapse p-2 text-center" id="multiCollapseOptions">
                             <button type="button" class="btn btn-secondary">Add Event</button>
                             <button type="button" class="btn btn-secondary">See your event</button>
-                            <button type="button" class="btn btn-secondary">Add users</button>
+                            {% if manger_perm %}
+                                <button type="button" class="btn btn-secondary"
+                                        onclick="open_users_manager_window()">Manage users</button>
+                            {% endif %}
                             <a type="button" class="btn btn-secondary" href={% url 'account_logout' %}>Logout</a>
-
                         </div>
                     </div>
+                </div>
+                <div class="row pt-5" >
+                    {% for group in user_groups %}
+                        <a type="button" class="btn btn-secondary" id="changeGroup"
+                            href="{% url 'main:calendar' group.pk  %}">{{ group.name }}</a>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Manage users PopUp -->
+    <div class="modal fade" id="manageUsersWindow" tabindex="-1" role="dialog" aria-labelledby="manegeUsersModal"
+         aria-hidden="true">
+        <div class="modal-dialog modal-m " role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title w-100 font-weight-bold text-center" id="eventLabel"></h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body d-flex flex-column" id="eventContent">
+                    {% for user in users_in_group %}
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="{{ user.id }}">
+                            <label class="form-check-label" for="{{ user.id }}">{{ user.username }}</label>
+                        </div>
+                    {% endfor %}
+                    <button type="button" class="btn btn-secondary btn-sm" id="DeleteUsersBtn">Delete users</button>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="closeEventWindow'">Close</button>
+                    <button type="button" class="btn btn-primary" id="addUsersToGroup">add users</button>
+                </div>
+            </div>
+        </div>
+    </div>
+  <!-- Manage users PopUp -->
 
     <!-- Event Detail PopUp -->
     <div class="modal fade" id="eventDetails" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
@@ -325,7 +380,7 @@
             </div>
         </div>
     </div>
-
+ <!-- Event Detail PopUp -->
 
     <!-- Create Event Form -->
     <div class="modal fade" id="createEventModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
@@ -353,7 +408,7 @@
         </div>
     </div>
 {% endblock %}
-
+  <!-- Create Event Form -->
 
 
 

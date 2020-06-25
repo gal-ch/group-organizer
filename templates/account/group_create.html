@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+
+                <form class="border border-light p-5 login" method="POST">
+
+                    {% csrf_token %}
+                    {{ form }}
+
+                    <button class=" btn btn-info my-4 btn-block" type="submit">submit</button>
+
+                </form>
+
+{% endblock %}
+
+
