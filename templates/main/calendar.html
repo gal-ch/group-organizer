@@ -1,46 +1,70 @@
 <!-- GroupCal/templates/main/calendar.html -->
 {% extends 'base.html' %}
 {% load get_dict_item %}
+
 {% block script %}
+
     <script>
-    /** to do:
-     * fix event update
-     * delete users fro groups
-     * permissions
-     * see event ?
-     * delete events
-     **/
+        /** to do:
+         * fix event update
+         * delete users fro groups
+         * permissions
+         * see event ?
+         * delete events
+         **/
+
         document.addEventListener('DOMContentLoaded', function() {
+            var source_obj= [
+                {% for g in events %}
+                    {
+                        groupId: {{ g.group_id }},
+                        events:
+                            [
+                                {% for i in g.group_events %}
+                                    {
+                                        id: '{{ i.id }}',
+                                        title:'{{ i.title}}',
+                                        description: '{{ i.description}}',
+                                        start: '{{ i.start }}',
+                                        end: '{{ i.end }}',
+                                        extendedProps: {
+                                            to_do: '{{ i.to_do }}',
+                                            charge_num: '{{ i.charge_num }}',
+                                            user_id:  '{{ i.user_id }}',
+                                        },
+                                    },
+                                {% endfor %}
+                            ]
+                    },
+                {% endfor %}
+            ];
             function get_calendar_height() {
                 return $(window).height()-30;
             }
             let add_to_in_charge_msg = document.getElementById("success-alert");
             let current_event = null;
             let calendarEl = document.getElementById('calendar');
-            let calendar = new FullCalendar.Calendar(calendarEl,  {
-                plugins: ['interaction', 'dayGrid' ],
-                editable: true,
+            let calendar = new FullCalendar.Calendar(calendarEl, {
+                plugins: [ 'interaction', 'dayGrid', 'timeGrid' ],
                 defaultView: 'dayGridMonth',
+                editable: true,
                 selectable: true,
                 height: get_calendar_height(),
-                events: [
-                    {% for i in events %}
-                        {
-                            id: '{{ i.id }}',
-                            title: "{{ i.title}}",
-                            description: "{{ i.description}}",
-                            start: '{{ i.start}}',
-                            end: '{{ i.end }}',
-                            extendedProps: {
-                                to_do: '{{ i.to_do }}',
-                                charge_num: '{{ i.charge_num }}',
-                                user_id: '{{ i.user_id }}',
-                            },
-                        },
-                    {% endfor %}
-                ],
+                customButtons: {
+                    mySideNav: {
+                        className: 'button-collapse black-text',
+                        click: function() {
+                            $('#fluidModalSuccess').modal('show')
+                        }
+                    }
+                },
+                headerToolbar: {
+                    left: 'mySideNav prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay',
+                },
                 windowResize:  function(view) {
-                    $('#calendar').fullCalendar('option', 'height', get_calendar_height());
+                    calendar.setOption('height', get_calendar_height());
                 },
 
                 dateClick: function(info) {
@@ -87,7 +111,6 @@
                                     },
                                 };
                                 calendar.addEvent(new_event);
-
                             },
                             error: function (rs, e) {
                                 console.log(rs.responseText);
@@ -95,6 +118,7 @@
                         });
                     });
                 },
+
 
                 eventClick: function(info) {
                     /**event window is open so user can:
@@ -192,6 +216,30 @@
 
             calendar.render();
 
+            var groups = document.getElementsByClassName("filterEventsByGroup");
+            for(let i=0;i < groups.length; i++)
+            {
+                groups[i].addEventListener("change", function() {
+                    if (this.checked === true) {
+                        for (let j = 0; j < source_obj.length; j++) {
+                            if (source_obj[j].groupId === parseInt(this.value)) {
+                                calendar.addEventSource(source_obj[j]);
+                                console.log(calendar.getEventSources())
+                            }
+                        }
+                    }
+                    else {
+                        for (let k = 0; k < calendar.getEventSources().length; k++) {
+                            var source_group_id = calendar.getEventSources()[k].internalEventSource.extendedProps.groupId;
+                            if (source_group_id === parseInt(this.value)) {
+                                calendar.getEventSources()[k].remove()
+                            }
+                        }
+                    }
+                });
+            }
+
+
             function update_event_window(info){
                 document.getElementById("eventLabel").innerHTML = info.event.title;
                 document.getElementById("eventDescription").innerHTML = info.event.extendedProps.description.toString();
@@ -245,82 +293,116 @@
                 add_to_in_charge_msg.innerHTML = '';
                 add_to_in_charge_msg.style.display = 'none';
             }
-        });
-        function open_users_manager_window(){
-            $('#manageUsersWindow').modal('show');
-            let user_pk = 1;
-            document.getElementById('DeleteUsersBtn').addEventListener('click', function () {
-                var url =`http://127.0.0.1:8000/event-detail/${user_pk}/`;
-                fetch( url,{
-                    method:'DELETE',
-                    headers:{
-                        'Content-type':'application/json',
-                        'X-CSRFToken':'{{ csrf_token }}',
-                    },
-                }).then(response  => response.json())
-                    .then(data => {
-                        console.log(data.id);
-                    }).catch(function(error){
-                    console.log('ERROR:', error)
-                })
 
-            })
-        }
+            function open_users_manager_window() {
+                $('#manageUsersWindow').modal('show');
+                let user_pk = 1;
+                document.getElementById('DeleteUsersBtn').addEventListener('click', function () {
+                    var url = `http://127.0.0.1:8000/event-detail/${user_pk}/`;
+                    fetch(url, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}',
+                        },
+                    }).then(response => response.json())
+                        .then(data => {
+                            console.log(data.id);
+                        }).catch(function (error) {
+                        console.log('ERROR:', error)
+                    });
+
+                });
+            }
+        })
 
 
     </script>
 {% endblock %}
 
 {% block content %}
+    {#    {% include 'main/side_nav.html' %}#}
     <div class="container-fluid p-2">
 
         <div class="row ">
             <div class="col" id='calendar'></div>
-
             <div class="col-4 col-md-2 border">
-                <div class="row pt-5">
-                    <div class="col d-flex flex-column">
-                        <div class="p-2">
-                            <a class="btn btn-primary btn-block" data-toggle="collapse" href="#multiCollapseExample1" role="button" aria-expanded="false"
-                               aria-controls="multiCollapseExample1">see users</a>
-                        </div>
-                        <div class="collapse multi-collapse" id="multiCollapseExample1">
-                            <div class="list-group-flush card card-body">
+
+                <ul class="list-group list-group-flush my-5 ml-3">
+                    <!-- Side navigation links -->
+                    <li><a class="collapsible"  data-toggle="collapse" data-target="#collapseUsers"
+                           aria-expanded="false" aria-controls="collapseUsers"><i class="fas fa-user-friends fa-sm"></i> see users in group<i class="fas fa-angle-down rotate-icon"></i></a>
+                        <div class="collapse" id="collapseUsers">
+                            <ul class="list-group">
                                 {% for user in users_in_group %}
-                                    <div class="list-group-item">
-                                        <p class="mb-0"><i class="far fa-image fa-2x mr-4 grey p-3 white-text rounded-circle " aria-hidden="true"></i>{{ user.username }}</p>
-                                    </div>
+                                    <li><a href="#" class="waves-effect">
+                                        {{ user.username }}</a>
+                                    </li>
                                 {% endfor %}
-                            </div>
+                            </ul>
                         </div>
-                    </div>
-                </div>
-                <div class="row pt-5">
-                    <div class="col d-flex flex-column">
-                        <div class="p-2">
-                            <button class="btn btn-primary btn-block" type="button" data-toggle="collapse" data-target="#multiCollapseOptions"
-                                    aria-expanded="false" aria-controls="multiCollapseOptions">options</button>
+                    </li>
+
+                    <li><a class="collapsible"  data-toggle="collapse" data-target="#collapseGroups"
+                           aria-expanded="false" aria-controls="collapseGroups"><i class="fas fa-layer-group fa-sm"></i> your groups
+                        <i class="fas fa-angle-down rotate-icon"></i></a>
+                        <div class="collapse" id="collapseGroups">
+                            <ul class="list-group mr-auto">
+                                {% for group in user_groups %}
+                                    <li>  <input type="checkbox" class="form-check-input filterEventsByGroup" id="groupCheckBox" value="{{ group.id }}">
+                                        <label class="form-check-label" for="groupCheckBox"> {{ group.name }}</label> </li>
+                                {% endfor %}
+                            </ul>
                         </div>
-                        <div class="collapse multi-collapse p-2 text-center" id="multiCollapseOptions">
-                            <button type="button" class="btn btn-secondary">Add Event</button>
-                            <button type="button" class="btn btn-secondary">See your event</button>
-                            {% if manger_perm %}
-                                <button type="button" class="btn btn-secondary"
-                                        onclick="open_users_manager_window()">Manage users</button>
-                            {% endif %}
-                            <a type="button" class="btn btn-secondary" href={% url 'account_logout' %}>Logout</a>
+                    </li>
+                    <li><a class="collapsible"  data-toggle="collapse" data-target="#collapseOptions"
+                           aria-expanded="false" aria-controls="collapseOptions"><i class="fas fa-filter fa-sm"></i> more options<i class="fas fa-angle-down rotate-icon"></i></a>
+                        <div class="collapse" id="collapseOptions">
+                            <ul class="list-group">
+                                <li><a href="#" class="waves-effect">See your event</a></li>
+                                <li><a href="#" class="waves-effect">logout</a></li>
+
+                            </ul>
                         </div>
-                    </div>
-                </div>
-                <div class="row pt-5" >
-                    {% for group in user_groups %}
-                        <a type="button" class="btn btn-secondary" id="changeGroup"
-                            href="{% url 'main:calendar' group.pk  %}">{{ group.name }}</a>
-                    {% endfor %}
-                </div>
+                    </li>
+                    <!--/. Side navigation links -->
+                </ul>
             </div>
         </div>
     </div>
+
+    <!-- Central Modal Medium Success -->
+    <div class="modal fade modal-right" id="fluidModalSuccess" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-notify modal-success modal-full-height" role="document">
+            <!--Content-->
+            <div class="modal-content">
+                <!--Header-->
+                <div class="modal-header">
+                    <p class="heading lead">Modal Success</p>
+
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true" class="white-text">&times;</span>
+                    </button>
+                </div>
+
+                <!--Body-->
+                <div class="modal-body">
+
+                </div>
+
+                <!--Footer-->
+                <div class="modal-footer justify-content-center">
+                    <a type="button" class="btn btn-success">Get it now <i class="far fa-gem ml-1 text-white"></i></a>
+                    <a type="button" class="btn btn-outline-success waves-effect" data-dismiss="modal">No, thanks</a>
+                </div>
+            </div>
+            <!--/.Content-->
+        </div>
+    </div>
+    <!-- Central Modal Medium Success-->
+
+
 
     <!-- Manage users PopUp -->
     <div class="modal fade" id="manageUsersWindow" tabindex="-1" role="dialog" aria-labelledby="manegeUsersModal"
@@ -349,7 +431,8 @@
             </div>
         </div>
     </div>
-  <!-- Manage users PopUp -->
+    <!-- Manage users PopUp -->
+
 
     <!-- Event Detail PopUp -->
     <div class="modal fade" id="eventDetails" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
@@ -380,7 +463,8 @@
             </div>
         </div>
     </div>
- <!-- Event Detail PopUp -->
+    <!-- Event Detail PopUp -->
+
 
     <!-- Create Event Form -->
     <div class="modal fade" id="createEventModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
@@ -408,7 +492,5 @@
         </div>
     </div>
 {% endblock %}
-  <!-- Create Event Form -->
-
-
+<!-- Create Event Form -->
 

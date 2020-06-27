@@ -20,6 +20,7 @@
     <orderEntry type="library" name="main" level="application" />
     <orderEntry type="library" name="tooltip" level="application" />
     <orderEntry type="library" name="mdb" level="application" />
+    <orderEntry type="library" name="materialize" level="application" />
   </component>
   <component name="TemplatesService">
     <option name="TEMPLATE_CONFIGURATION" value="Django" />
