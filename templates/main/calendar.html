@@ -13,30 +13,26 @@
          **/
 
         document.addEventListener('DOMContentLoaded', function() {
-            var source_obj= [
+
+            var events_sources = {
                 {% for g in events %}
-                    {
-                        groupId: {{ g.group_id }},
-                        events:
-                            [
-                                {% for i in g.group_events %}
-                                    {
-                                        id: '{{ i.id }}',
-                                        title:'{{ i.title}}',
-                                        description: '{{ i.description}}',
-                                        start: '{{ i.start }}',
-                                        end: '{{ i.end }}',
-                                        extendedProps: {
-                                            to_do: '{{ i.to_do }}',
-                                            charge_num: '{{ i.charge_num }}',
-                                            user_id:  '{{ i.user_id }}',
-                                        },
-                                    },
-                                {% endfor %}
-                            ]
+                    '{{ g.group_id }}': {
+                        url:  `http://127.0.0.1:8000/update-event-source/{{ g.group_id }}/`,
+                        type: 'GET',
+                        cache: true,
+                        error: function() { alert('something broke with courses...'); },
+                        success: function(events_source){
+                            console.log(events_source)
+                            successCallback(events_source);
+
+                        },
+                        color: 'purple',
+                        textColor: 'white',
+                        className: `group-${{ g.group_id }}`
                     },
                 {% endfor %}
-            ];
+            };
+
             function get_calendar_height() {
                 return $(window).height()-30;
             }
@@ -62,11 +58,15 @@
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay',
                 },
+                eventSources: [],
+                {#[{{ events_sources.items|lookup:k }} {% for k in events_sources.items %}  {% endfor %}],#}
                 windowResize:  function(view) {
                     calendar.setOption('height', get_calendar_height());
                 },
-
                 dateClick: function(info) {
+
+                    console.log(Object.values(events_sources));
+                    console.log(calendar.refetchEvents());
                     $('#createEventModal').modal('show');
                     $('#id_take_on_event').click(function () {
                         $("#id_charge_num").attr('disabled', !this.checked)
@@ -82,6 +82,8 @@
                             type: 'POST',
                             url: '{%  url "main:calendar" user.pk %}',
                             data: {
+                                title: title,
+                                description: description,
                                 current_group: $('#id_group').val(),
                                 start_hour: $('#id_start_hour').val(),
                                 end_hour: $('#id_end_hour').val(),
@@ -107,8 +109,6 @@
                                         charge_num: charge_num,
                                     },
                                 };
-                                
-                                calendar.addEvent(new_event);
                             },
                             error: function (rs, e) {
                                 console.log(rs.responseText);
@@ -212,33 +212,59 @@
 
             calendar.render();
 
+            function get_event_from_source(group_id) {
+                console.log(group_id)
+                calendar.addEventSource({
+                    id: group_id,
+                    events: function (info, successCallback, failureCallback) {
+                        var url = `http://127.0.0.1:8000/update-event-source/${group_id}/`;
+                        fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Content-type': 'application/json',
+                            },
+                        }).then(response => response.json())
+                            .then(data => {
+                                var events = [];
+                                console.log(data.group_events);
+                                $(data.group_events).each(function () {
+                                    events.push({
+                                        title: $(this).attr('title'),
+                                        start: $(this).attr('start'),
+                                        end: $(this).attr('end'),
+                                        id: $(this).attr('id'),
+                                        description: $(this).attr('description'),
+                                        color: $(this).attr('color'),
+                                        textColor: 'black',
+                                        charge_num: $(this).attr('charge_num'),
+                                        to_do: $(this).attr('to_do'),
+                                        user_id: $(this).attr('to_do'),
+
+                                    })
+                                });
+                                successCallback(events);
+                                console.log(calendar.getEventSources())
+                            })
+                    },
+
+                });
+                calendar.refetchEvents()
+            }
+
+
             var groups = document.getElementsByClassName("filterEventsByGroup");
             for(let i=0;i < groups.length; i++)
             {
                 groups[i].addEventListener("change", function() {
+                    console.log(parseInt(this.value[0]))
                     if (this.checked === true) {
-                        for (let j = 0; j < source_obj.length; j++) {
-                            if (source_obj[j].groupId === parseInt(this.value)) {
-                                calendar.addEventSource(source_obj[j]);
-                                console.log(calendar.getEventSources())
-                            }
-                        }
+                        get_event_from_source(parseInt(this.value[0]), this.value[1]);
                     }
                     else {
-                        for (let k = 0; k < calendar.getEventSources().length; k++) {
-                            var source_group_id = calendar.getEventSources()[k].internalEventSource.extendedProps.groupId;
-                            if (source_group_id === parseInt(this.value)) {
-                                calendar.getEventSources()[k].remove()
-                            }
-                        }
+                        calendar.getEventSourceById(parseInt(this.value[0])).remove();
+
                     }
                 });
-            }
-            
-            function get_event_source() {
-
-                eventSource.refetch()
-
             }
 
 
@@ -334,15 +360,19 @@
 
                 <ul class="list-group list-group-flush my-5 ml-3">
                     <!-- Side navigation links -->
-                    <li><a class="collapsible"  data-toggle="collapse" data-target="#collapseUsers" aria-expanded="false" aria-controls="collapseUsers"><i class="fas fa-user-friends fa-sm"></i> see users in group</a>
+                    <li><a class="collapsible"  data-toggle="collapse" data-target="#collapseUsers"
+                           aria-expanded="false" aria-controls="collapseUsers"><i class="fas fa-user-friends fa-sm"></i> see users in groups</a>
                         <div class="collapse" id="collapseUsers">
+                        {% for group in users_in_groups %}
+                        {{ group.group_name }}
                             <ul class="list-group">
-                                {% for user in users_in_group %}
+                                {% for user in group.users %}
                                     <li><a href="#" class="waves-effect">
-                                        {{ user.username }}</a>
+                                        {{ user.user_name }}</a>
                                     </li>
                                 {% endfor %}
                             </ul>
+                        {% endfor %}
                         </div>
                     </li>
 
@@ -363,8 +393,8 @@
                         <div class="collapse" id="collapseOptions">
                             <ul class="list-group">
                                 <li><a href="#" class="waves-effect">See your event</a></li>
+                                <li><a href="{% url 'create-group' %}" class="waves-effect">create new group</a></li>
                                 <li><a href="#" class="waves-effect">logout</a></li>
-
                             </ul>
                         </div>
                     </li>
@@ -375,94 +405,94 @@
 
     </div>
 
-        <!-- Manage users PopUp -->
-        <div class="modal fade" id="manageUsersWindow" tabindex="-1" role="dialog" aria-labelledby="manegeUsersModal"
-             aria-hidden="true">
-            <div class="modal-dialog modal-m " role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
+    <!-- Manage users PopUp -->
+    <div class="modal fade" id="manageUsersWindow" tabindex="-1" role="dialog" aria-labelledby="manegeUsersModal"
+         aria-hidden="true">
+        <div class="modal-dialog modal-m " role="document">
+            <div class="modal-content">
+                <div class="modal-header">
 
-                        <h4 class="modal-title w-100 font-weight-bold text-center" id="manageUsers"></h4>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body d-flex flex-column" id="eventContent">
-                        {% for user in users_in_group %}
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="{{ user.id }}">
-                                <label class="form-check-label" for="{{ user.id }}">{{ user.username }}</label>
-                            </div>
-                        {% endfor %}
-                        <button type="button" class="btn btn-secondary btn-sm" id="DeleteUsersBtn">Delete users</button>
-                    </div>
-                    <div class="modal-footer justify-content-center">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal" id="closeEventWindow'">Close</button>
-                        <button type="button" class="btn btn-primary" id="addUsersToGroup">add users</button>
-                    </div>
+                    <h4 class="modal-title w-100 font-weight-bold text-center" id="manageUsers"></h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body d-flex flex-column" id="eventContent">
+                    {% for user in users_in_group %}
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="{{ user.id }}">
+                            <label class="form-check-label" for="{{ user.id }}">{{ user.username }}</label>
+                        </div>
+                    {% endfor %}
+                    <button type="button" class="btn btn-secondary btn-sm" id="DeleteUsersBtn">Delete users</button>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="closeEventWindow'">Close</button>
+                    <button type="button" class="btn btn-primary" id="addUsersToGroup">add users</button>
                 </div>
             </div>
         </div>
-        <!-- Manage users PopUp -->
+    </div>
+    <!-- Manage users PopUp -->
 
 
-        <!-- Event Detail PopUp -->
-        <div class="modal fade" id="eventDetails" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
-             aria-hidden="true">
-            <div class="modal-dialog modal-m " role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <p class="modal-title w-100 font-weight-bold text-center" id="eventTitle"></p>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
+    <!-- Event Detail PopUp -->
+    <div class="modal fade" id="eventDetails" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-m " role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <p class="modal-title w-100 font-weight-bold text-center" id="eventTitle"></p>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body d-flex flex-column" id="eventContent">
+                    <p class="text-center" id="eventDescription"></p>
+                    <span>start at:<p class="text-center" id="eventStart"></p></span>
+                    <span>end at:<p class="text-center" id="eventEnd"></p></span>
+                    <div class="alert alert-success" id="success-alert" style="display:none">
+                        <button type="button" class="close" >x</button>
+                        <span class="glyphicon glyphicon-ok"></span>
                     </div>
-                    <div class="modal-body d-flex flex-column" id="eventContent">
-                        <p class="text-center" id="eventDescription"></p>
-                        <span>start at:<p class="text-center" id="eventStart"></p></span>
-                        <span>end at:<p class="text-center" id="eventEnd"></p></span>
-                        <div class="alert alert-success" id="success-alert" style="display:none">
-                            <button type="button" class="close" >x</button>
-                            <span class="glyphicon glyphicon-ok"></span>
-                        </div>
-                        <ul class="list-group list-group-flush" id="eventChargeUsers" title="How is doing?">How is doing?</ul>
-                    </div>
-                    <div class="modal-footer justify-content-center">
-                        <button id="eventToDoBtn" type="button" class="btn btn-blue-grey">Do it</button>
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal" id="closeEventWindow'">Close</button>
-                        <button type="button" class="btn btn-primary" id="UpdateEventBtn">Update Event</button>
-                    </div>
+                    <ul class="list-group list-group-flush" id="eventChargeUsers" title="How is doing?">How is doing?</ul>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button id="eventToDoBtn" type="button" class="btn btn-blue-grey">Do it</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="closeEventWindow'">Close</button>
+                    <button type="button" class="btn btn-primary" id="UpdateEventBtn">Update Event</button>
                 </div>
             </div>
         </div>
-        <!-- Event Detail PopUp -->
+    </div>
+    <!-- Event Detail PopUp -->
 
 
-        <!-- Create Event Form -->
-        <div class="modal fade" id="createEventModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header text-center">
-                        <h4 class="modal-title w-100 font-weight-bold">Add Event</h4>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
+    <!-- Create Event Form -->
+    <div class="modal fade" id="createEventModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header text-center">
+                    <h4 class="modal-title w-100 font-weight-bold">Add Event</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="post" id="eventForm" action="">
+                    <div class="modal-body mx-3">
+                        {% csrf_token %}
+                        {{ form.as_p }}
                     </div>
-                    <form method="post" id="eventForm" action="">
-                        <div class="modal-body mx-3">
-                            {% csrf_token %}
-                            {{ form.as_p }}
-                        </div>
-                        <div class="modal-footer d-flex justify-content-center">
-                            <button type="submit" id="submitButton" class="btn btn-unique">Save<i class="fas fa-paper-plane-o ml-1"></i></button>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer d-flex justify-content-center">
-                    <button class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
-                </div>
+                    <div class="modal-footer d-flex justify-content-center">
+                        <button type="submit" id="submitButton" class="btn btn-unique">Save<i class="fas fa-paper-plane-o ml-1"></i></button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer d-flex justify-content-center">
+                <button class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
             </div>
         </div>
+    </div>
 
 {% endblock %}
 <!-- Create Event Form -->

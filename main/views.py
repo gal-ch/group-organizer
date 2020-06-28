@@ -41,7 +41,10 @@ class CalendarView(FormMixin, DetailView):
                                                                       'start': o.start_time.isoformat(), 'end': o.end_time.isoformat(),
                                                                       'allDay': True, 'to_do': o.take_on_event, 'charge_num': o.charge_num,
                                                                       'user_id': o.user_id} for o in group.events.all()]} for group in user_groups]
-        context['user_groups'] = Group.objects.filter(user=self.object)
+        user_groups = Group.objects.filter(user=self.object)
+        context['user_groups'] = user_groups
+        context['users_in_groups'] = [{'group_name': group.name, 'users': [{'user_name': user.username} for user in group.user_set.all()]} for group in user_groups]
+        print(context['users_in_groups'])
         context['manger_perm'] = self.object.has_perm('auth.change_group')
         form_class = self.get_form_class()
         context['form'] = self.get_form(form_class)
@@ -53,6 +56,7 @@ class CalendarView(FormMixin, DetailView):
         if form.is_valid():
             return self.form_valid(form)
         else:
+            print(form.errors)
             return self.form_invalid(form)
 
     def form_valid(self, form):
@@ -63,9 +67,12 @@ class CalendarView(FormMixin, DetailView):
         add the event to the selected group
         send to the client the event id and the converted start and end time of the event
         '''
+        print('form_valid')
         current_tz = timezone.get_current_timezone()
         group_id = self.request.POST.get('current_group')
+        print(group_id)
         group_obj = Group.objects.get(id=group_id)
+        print(group_obj)
         date_start_string = '{} {}'.format(self.request.POST.get('date'), self.request.POST.get('start_hour'))
         date_end_string = '{} {}'.format(self.request.POST.get('date'), self.request.POST.get('end_hour'))
         start_t = datetime.datetime.strptime(date_start_string, "%Y-%m-%d %H:%M:%S")
@@ -75,6 +82,8 @@ class CalendarView(FormMixin, DetailView):
         if form.is_valid():
             new_event = form.save(commit=False)
             new_event.user_id = self.request.user.pk
+            new_event.title = self.request.POST.get('title')
+            new_event.description = self.request.POST.get('description')
             new_event.charge_num = self.request.POST.get('charge_num')
             new_event.start_time = start_date
             new_event.end_time = end_date
@@ -82,6 +91,7 @@ class CalendarView(FormMixin, DetailView):
                 new_event.take_on_event = True
             new_event.save()
             group_obj.events.add(new_event)
+            print(group_obj.events)
             response = {
                 "instance_id": new_event.id,
                 "start_time": new_event.start_time,

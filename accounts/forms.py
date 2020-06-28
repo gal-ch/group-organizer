@@ -9,11 +9,18 @@ def get_permission_from_name(name):
     return Permission.objects.get(name=name)
 
 
-class EditGroupForm(forms.Form):
+class EditGroupForm(forms.ModelForm):
     users = forms.ModelMultipleChoiceField(
         queryset=User.objects.all(),
-        widget=forms.SelectMultiple(attrs={"class": "form-control select-multiple"}))
+        widget=forms.CheckboxSelectMultiple())
     # permissions = forms.TypedMultipleChoiceField(
     #     choices=User._meta.permissions,
     #     coerce=get_permission_from_name,  )
-    group_name = forms.CharField()
+
+    class Meta:
+        model = Group
+        fields = ('name', 'color')
+
+
+
+

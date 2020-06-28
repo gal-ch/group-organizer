@@ -40,11 +40,13 @@ class GroupCreate(CreateView):
         print(user.user_permissions)
         print(user.has_perm('auth.change_group'))
         if form.is_valid():
-            group_name = request.POST.get('group_name')
-            new_group = Group.objects.create(name=group_name)
+            new_group = form.save(commit=False)
+            # group_name = request.POST.get('group_name')
+            # new_group = Group.objects.create(name=group_name)
+            new_group.save()
             users = [User.objects.get(pk=pk) for pk in request.POST.getlist("users", "")]
             for user in users:
                 new_group.user_set.add(user)
-            return HttpResponseRedirect('main:calendar', kwargs={'pk': new_group.id})
+            return redirect('main:calendar', pk=request.user.id)
         return render(request, 'account/group_create.html', {'form': form})
 

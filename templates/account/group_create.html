@@ -1,14 +1,45 @@
 {% extends "base.html" %}
+{% load widget_tweaks %}
 {% block content %}
 
-                <form class="border border-light p-5 login" method="POST">
-
+    <div class="container d-flex flex-column min-vh-100">
+        <div class="row flex-grow-1 justify-content-center align-items-center">
+            <div class="col-md-6">
+                <form class="border border-light p-5" method="POST"  style="background-color: #b26250">
+                    <p class="h4 mb-4 text-center">Create Group</p>
                     {% csrf_token %}
-                    {{ form }}
+                    {{ form.non_field_errors }}
+                    <div class="form-row mb-2">
+                        <div class="col">
+                            <!-- name -->
+                            <div class="form-group">
+                                {{ form.name.errors }}
+                                {% render_field form.name  class="form-control" %}
+                            </div>
+                        </div>
+                        <div class="col">
+                            <!-- color-->
+                            <div class="form-group">
+                                {{ form.color.errors }}
+                                {% render_field form.color  class="form-control" %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                     <!-- users-->
+                        {% for user in form.users %}
+                            <div class="custom-control custom-checkbox">
+                                {{ user }}
+                            </div>
+                        {% endfor %}
+                    </div>
 
                     <button class=" btn btn-info my-4 btn-block" type="submit">submit</button>
-
                 </form>
+            </div>
+        </div>
+    </div>
 
 {% endblock %}
 
