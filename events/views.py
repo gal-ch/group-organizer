@@ -15,6 +15,11 @@ class EventCreate(CreateView):
     form_class = EventForm
     success_url = '/calendar'
 
+    def get_form_kwargs(self):
+        kwargs = super(EventCreate, self).get_form_kwargs()
+        kwargs['user'] = self.request.user.pk
+        return kwargs
+
     def post(self, request, *args, **kwargs):
         if self.request.is_ajax and self.request.method == "POST":
             ''' 
@@ -27,6 +32,7 @@ class EventCreate(CreateView):
             form = self.form_class(self.request.POST)
             current_tz = timezone.get_current_timezone()
             group_id = request.POST.get('current_group')
+            print(group_id)
             group_obj = Group.objects.get(id=group_id)
             date_start_string = '{} {}'.format(request.POST.get('date'), request.POST.get('start_hour'))
             date_end_string = '{} {}'.format(request.POST.get('date'),  request.POST.get('end_hour'))

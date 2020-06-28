@@ -12,7 +12,7 @@ class Event(models.Model):
     title = models.CharField(max_length=50)
     description = models.TextField(blank=True, null=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='users_events')
-    take_on_event = models.BooleanField(default=False)
+    take_on_event = models.BooleanField()
     charge_num = models.IntegerField(default=0, validators=[MaxValueValidator(10), MinValueValidator(0)])
     charge_users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='in_charge')
 

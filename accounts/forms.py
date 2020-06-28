@@ -12,7 +12,7 @@ def get_permission_from_name(name):
 class EditGroupForm(forms.Form):
     users = forms.ModelMultipleChoiceField(
         queryset=User.objects.all(),
-        widget=forms.SelectMultiple(attrs={"class" : "form-control select-multiple"}))
+        widget=forms.SelectMultiple(attrs={"class": "form-control select-multiple"}))
     # permissions = forms.TypedMultipleChoiceField(
     #     choices=User._meta.permissions,
     #     coerce=get_permission_from_name,  )
