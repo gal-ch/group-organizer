@@ -77,6 +77,7 @@ def event_change_date(request):
     return JsonResponse({"error": ""}, status=400)
 
 
+# to do - fix api
 @api_view(['GET'])
 @permission_classes((permissions.AllowAny,))
 def event_detail(request, pk):
@@ -101,7 +102,7 @@ def event_update(request, pk):
 def update_event_source(request, pk):
     user = request.user.pk
     current_group = Group.objects.get(id=pk)
-    events_source = {'group_id': pk, 'group_events': [{
+    events_source = {'group_id': pk, 'group_events':[{
         'id': o.id, 'title': o.title, 'description': o.description, 'start': o.start_time.isoformat(),
         'end': o.end_time.isoformat(),'allDay': True, 'to_do': o.take_on_event, 'charge_num': o.charge_num,
         'user_id': o.user_id} for o in current_group.events.all()]}

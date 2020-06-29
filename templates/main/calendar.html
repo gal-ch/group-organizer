@@ -1,8 +1,10 @@
 <!-- GroupCal/templates/main/calendar.html -->
 {% extends 'base.html' %}
 {% load get_dict_item %}
+{% load static %}
 {% block script %}
 
+    {#    <script src="{% static 'static_root/main/js/main.js' %}">#}
     <script>
         /** to do:
          * fix event update
@@ -12,27 +14,8 @@
          * delete events
          **/
 
-        document.addEventListener('DOMContentLoaded', function() {
-
-            var events_sources = {
-                {% for g in events %}
-                    '{{ g.group_id }}': {
-                        url:  `http://127.0.0.1:8000/update-event-source/{{ g.group_id }}/`,
-                        type: 'GET',
-                        cache: true,
-                        error: function() { alert('something broke with courses...'); },
-                        success: function(events_source){
-                            console.log(events_source)
-                            successCallback(events_source);
-
-                        },
-                        color: 'purple',
-                        textColor: 'white',
-                        className: `group-${{ g.group_id }}`
-                    },
-                {% endfor %}
-            };
-
+        document.addEventListener('DOMContentLoaded', function()
+        {
             function get_calendar_height() {
                 return $(window).height()-30;
             }
@@ -59,10 +42,10 @@
                     right: 'dayGridMonth,timeGridWeek,timeGridDay',
                 },
                 eventSources: [],
-                {#[{{ events_sources.items|lookup:k }} {% for k in events_sources.items %}  {% endfor %}],#}
                 windowResize:  function(view) {
                     calendar.setOption('height', get_calendar_height());
                 },
+
                 dateClick: function(info) {
 
                     console.log(Object.values(events_sources));
@@ -188,9 +171,7 @@
                             });
                     }
                 },
-
                 eventDrop: function (info) {
-                    {#if (info.event.start !== info.oldEvent.start || info.event.end !== info.oldEvent.end){#}
                     $.ajax({
                         type: 'GET',
                         url: '{%  url "events:ajax_event_change_date" %}',
@@ -211,7 +192,6 @@
             });
 
             calendar.render();
-
             function get_event_from_source(group_id) {
                 console.log(group_id)
                 calendar.addEventSource({
@@ -310,8 +290,8 @@
                 document.getElementById("id_take_on_event").checked = info.event.extendedProps.to_do;
                 document.getElementById("id_charge_num").value = info.event.extendedProps.charge_num;
                 document.getElementById("id_charge_num").value = info.event.extendedProps.charge_num;
-                {#document.getElementById("id_start_hour").op = ;#}
-                {#document.getElementById("id_end_hour").value = ;#}
+                // document.getElementById("id_start_hour").op = ;
+                // document.getElementById("id_end_hour").value = ;
                 $('#createEventModal').modal('show');
             }
             function clear_event_data() {
@@ -344,43 +324,117 @@
 
                 });
             }
-        })
 
+            const user_input = $("#user-input");
+            const search_icon = $('#search-icon');
+            const users_div = $('#replaceable-content');
+            const endpoint = '/search-users-view/';
+            const delay_by_in_ms = 700;
+            let scheduled_function = false;
+
+            let ajax_call = function (endpoint, request_parameters) {
+                $.getJSON(endpoint, request_parameters)
+                    .done(response => {
+                        // fade out the artists_div, then:
+                        users_div.fadeTo('slow', 0).promise().then(() => {
+                            // replace the HTML contents
+                            users_div.html(response['html_from_view']);
+                            // fade-in the div with new contents
+                            users_div.fadeTo('slow', 1);
+                            document.getElementById('sendFriendRequest').addEventListener('click', function () {
+                                var data = {'receiver_id':this.value,};
+                                fetch('http://127.0.0.1:8000/api/send-friend-request/', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Accept': 'application/json, text/plain, */*',
+                                        'Content-type': 'application/json',
+                                        'X-CSRFToken':'{{ csrf_token }}',
+                                    },
+                                    body: JSON.stringify(data)
+                                }).then(response => response.json())
+                                    .then(data => {
+                                        console.log(data);
+                                        // return massege to user -->> to do
+                                    }).catch(function (error) {
+                                    console.log('ERROR:', error)
+                                });
+                            })
+                            // stop animating search icon
+                            // search_icon.removeClass('blink')
+                        })
+                    })
+            };
+            user_input.on('keyup', function () {
+                const request_parameters = {
+                    q: $(this).val() // value of user_input: the HTML element with ID user-input
+                };
+                // if scheduled_function is NOT false, cancel the execution of the function
+                if (scheduled_function) {
+                    clearTimeout(scheduled_function)
+                }
+                scheduled_function = setTimeout(ajax_call, delay_by_in_ms, endpoint, request_parameters)
+            });
+
+        });
+
+        function response_to_friend_request(e, response) {
+            var data = {
+                'response': response,
+            };
+            fetch(`http://127.0.0.1:8000/api/response-to-friend-request/${e.value}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-type': 'application/json',
+                    'X-CSRFToken':'{{ csrf_token }}',
+                },
+                body: JSON.stringify(data)
+            }).then(response => response.json())
+                .then(data =>
+                {
+                    console.log(data);
+                    e.innerHTML = '<i class="fas fa-check-circle"></i>';
+                    var elem = e.parentNode;
+                    var elem_btns = elem.getElementsByTagName('button');
+                    console.log(elem_btns);
+
+                }).catch(function (error) {
+                console.log('ERROR:', error)
+            });
+        }
 
     </script>
 {% endblock %}
 
 {% block content %}
-
     <div class="container-fluid p-2">
-
-        <div class="row ">
+        <div class="row p-3">
             <div class="col" id='calendar'></div>
-            <div class="col-4 col-md-2 border">
-
-                <ul class="list-group list-group-flush my-5 ml-3">
+            <div class="col-4 col-md-2 border sidebar" style="background-color: rgba(32,80,103,0.34)">
+                <h3 class="sidebar-title">hey {{ request.user.username }}</h3>
+                <ul class="list-group list-group-flush fa-ul ml-3 my-5 list-unstyled menu-headers">
                     <!-- Side navigation links -->
-                    <li><a class="collapsible"  data-toggle="collapse" data-target="#collapseUsers"
-                           aria-expanded="false" aria-controls="collapseUsers"><i class="fas fa-user-friends fa-sm"></i> see users in groups</a>
+                    <li><i class="fas fa-user-friends fa-sm"></i><a class="collapsible p-2"  data-toggle="collapse" data-target="#collapseUsers"
+                                                                    aria-expanded="false" aria-controls="collapseUsers">see users in groups</a>
+                        <i class="fas fa-angle-down rotate-icon"></i>
                         <div class="collapse" id="collapseUsers">
-                        {% for group in users_in_groups %}
-                        {{ group.group_name }}
-                            <ul class="list-group">
-                                {% for user in group.users %}
-                                    <li><a href="#" class="waves-effect">
-                                        {{ user.user_name }}</a>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        {% endfor %}
+                            {% for group in users_in_groups %}
+                                {{ group.group_name }}
+                                <ul class="list-group list-unstyled">
+                                    {% for user in group.users %}
+                                        <li><a href="#" class="waves-effect">
+                                            {{ user.user_name }}</a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endfor %}
                         </div>
                     </li>
 
-                    <li><a class="collapsible"  data-toggle="collapse" data-target="#collapseGroups"
-                           aria-expanded="false" aria-controls="collapseGroups"><i class="fas fa-layer-group fa-sm"></i> your groups</a>
-                        <i class="fas fa-angle-down rotate-icon"></i></a>
+                    <li><i class="fas fa-layer-group fa-sm"></i> <a class="collapsible p-2"  data-toggle="collapse" data-target="#collapseGroups"
+                                                                    aria-expanded="false" aria-controls="collapseGroups">your groups</a>
+                        <i class="fas fa-angle-down rotate-icon"></i>
                         <div class="collapse" id="collapseGroups">
-                            <ul class="list-group mr-auto">
+                            <ul class="list-group mr-auto list-unstyled">
                                 {% for group in user_groups %}
                                     <li>  <input type="checkbox" class="form-check-input filterEventsByGroup" id="groupCheckBox" value="{{ group.id }}">
                                         <label class="form-check-label" for="groupCheckBox"> {{ group.name }}</label> </li>
@@ -388,13 +442,16 @@
                             </ul>
                         </div>
                     </li>
-                    <li><a class="collapsible"  data-toggle="collapse" data-target="#collapseOptions"
-                           aria-expanded="false" aria-controls="collapseOptions"><i class="fas fa-filter fa-sm"></i> more options<i class="fas fa-angle-down rotate-icon"></i></a>
+                    <li><i class="fas fa-filter fa-sm"></i><a class="collapsible p-2"  data-toggle="collapse" data-target="#collapseOptions"
+                                                              aria-expanded="false" aria-controls="collapseOptions"> more options</a>
+                        <i class="fas fa-angle-down rotate-icon"></i>
                         <div class="collapse" id="collapseOptions">
-                            <ul class="list-group">
+                            <ul class="list-group list-unstyled">
                                 <li><a href="#" class="waves-effect">See your event</a></li>
-                                <li><a href="{% url 'create-group' %}" class="waves-effect">create new group</a></li>
-                                <li><a href="#" class="waves-effect">logout</a></li>
+                                <li><a href="{% url 'accounts:create-group' %}" class="waves-effect">create new group</a></li>
+                                <li><a type="button" class="btn btn-primary" data-toggle="modal" data-target="#addContactsForm">add contacts</a></li>
+                                <li><a href="{% url 'account_logout' %}" class="waves-effect">logout</a></li>
+                                <li><a type="button" class="btn btn-primary" data-toggle="modal" data-target="#friendsRequest">friends request</a></li>
                             </ul>
                         </div>
                     </li>
@@ -493,7 +550,77 @@
             </div>
         </div>
     </div>
+    <!-- Create Event Form -->
+
+
+    <!-- Add Contacts Form -->
+    <div class="modal fade" id="addContactsForm" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-md" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title w-100" id="myModalLabel">Search users by email</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="col-4 col-md-6">
+                        <span><i id="search-icon" class="fas fa-search"></i><input id="user-input" placeholder="Search"></span>
+                    </div>
+
+                    <div id="replaceable-content" class="col" style="background-color: #f53148">
+                        {% include 'account/users_search_result.html' %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary btn-sm">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Add Contacts Form  -->
+
+    <!-- Add Contacts Form -->
+    <div class="modal fade" id="friendsRequest" tabindex="-1" role="dialog" aria-labelledby="friendsRequestPopUp"
+         aria-hidden="true">
+        <div class="modal-dialog modal-md" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title w-100" id="myModalLabel">your friends request</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    {% if user_friends_request %}
+                        <ul class="list-group list-unstyled mx-2">
+                        {% for f_request in user_friends_request %}
+                            <li class="friends-request-item d-flex flex-row justify-content-around">
+                            <h5 class="align-self-center">{{ f_request.sender }}</h5>
+                            <button class="btn btn-default btn-sm" value="{{ f_request.sender.pk }}"
+                                    id="approveFriendRequest" onclick="response_to_friend_request(this, true)">approve</button>
+                            <button class="btn btn-default btn-sm" value="{{ f_request.sender.pk }}"
+                                    id="declineFriendRequest" onclick="response_to_friend_request(this, false)">decline</button>
+                            </li>
+                        {% endfor %}
+                    {% endif %}
+                    </ul>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Add Contacts Form  -->
+
+
+
+
 
 {% endblock %}
-<!-- Create Event Form -->
+
 

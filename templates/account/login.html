@@ -6,14 +6,14 @@
 {% block head_title %}{% trans "Signup" %}{% endblock %}
 {% block content %}
 
-    <div class="container-fluid h-100">
-        <div class="row h-100 justify-content-around align-items-center">
+    <div class="container d-flex flex-column min-vh-100">
+        <div class="row flex-grow-1 justify-content-center align-items-center">
 
-            <div class="col-md-4">
+            <div class="col-md-6">
                 {% include "account/signup.html" with form=signup_form %}
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <form class="border border-light p-5 login" method="POST" action="{% url 'account_login' %}"
                       style="background-color: rgba(245,221,93,0.63)">
                     <p class="h4 mb-4 text-center">Sign in</p>

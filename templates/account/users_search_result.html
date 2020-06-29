@@ -1,0 +1,17 @@
+
+{% if user_not_friends  %}
+  <ul class="list-unstyled">
+  {% for user in user_not_friends %}
+  <li class="d-flex flex-row" style="background-color: #f5dd5d">
+      <h5 class="text-align-center">{{ user.email }}</h5>
+          <button class="btn btn-default btn-sm" value="{{ user.pk }}" id="sendFriendRequest">add friend</button></li>
+  {% endfor %}
+  {% elif user_friends %}
+        {% for user in user_friends %}
+  <li class="d-flex flex-row" style="background-color: #f5dd5d">
+      <h5 class="text-align-center">{{ user.email }}</h5></li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p>No users found.</p>
+{% endif %}

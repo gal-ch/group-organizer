@@ -5,6 +5,8 @@ from django.views.generic.edit import FormMixin
 from django.contrib.auth.models import Group
 from django.http import JsonResponse
 from django.utils import timezone
+
+from accounts.models import FriendRequest
 from events.forms import EventForm
 from events.models import Event
 from django.contrib.auth import get_user_model
@@ -44,8 +46,8 @@ class CalendarView(FormMixin, DetailView):
         user_groups = Group.objects.filter(user=self.object)
         context['user_groups'] = user_groups
         context['users_in_groups'] = [{'group_name': group.name, 'users': [{'user_name': user.username} for user in group.user_set.all()]} for group in user_groups]
-        print(context['users_in_groups'])
         context['manger_perm'] = self.object.has_perm('auth.change_group')
+        context['user_friends_request'] = FriendRequest.objects.filter(receiver=self.object)
         form_class = self.get_form_class()
         context['form'] = self.get_form(form_class)
         return context
@@ -70,9 +72,7 @@ class CalendarView(FormMixin, DetailView):
         print('form_valid')
         current_tz = timezone.get_current_timezone()
         group_id = self.request.POST.get('current_group')
-        print(group_id)
         group_obj = Group.objects.get(id=group_id)
-        print(group_obj)
         date_start_string = '{} {}'.format(self.request.POST.get('date'), self.request.POST.get('start_hour'))
         date_end_string = '{} {}'.format(self.request.POST.get('date'), self.request.POST.get('end_hour'))
         start_t = datetime.datetime.strptime(date_start_string, "%Y-%m-%d %H:%M:%S")
@@ -91,7 +91,6 @@ class CalendarView(FormMixin, DetailView):
                 new_event.take_on_event = True
             new_event.save()
             group_obj.events.add(new_event)
-            print(group_obj.events)
             response = {
                 "instance_id": new_event.id,
                 "start_time": new_event.start_time,
@@ -106,9 +105,10 @@ class CalendarView(FormMixin, DetailView):
 def get_charge_users(request):
     event_obj = Event.objects.get(id=request.GET.get('event_id'))
     users_list = event_obj.get_charge_users()
-    print(users_list)
     response_data = {'users_list': users_list}
     return JsonResponse(response_data)
+
+
 
 
 

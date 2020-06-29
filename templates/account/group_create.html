@@ -5,7 +5,7 @@
     <div class="container d-flex flex-column min-vh-100">
         <div class="row flex-grow-1 justify-content-center align-items-center">
             <div class="col-md-6">
-                <form class="border border-light p-5" method="POST"  style="background-color: #b26250">
+                <form class="border border-light p-5" method="POST"  style="background-color: rgba(143,178,102,0.31)">
                     <p class="h4 mb-4 text-center">Create Group</p>
                     {% csrf_token %}
                     {{ form.non_field_errors }}
@@ -36,6 +36,8 @@
                     </div>
 
                     <button class=" btn btn-info my-4 btn-block" type="submit">submit</button>
+                     <a type="button" href="{% url "main:calendar" user.pk %}" class="btn btn-info my-4 btn-block">home</a>
+
                 </form>
             </div>
         </div>
