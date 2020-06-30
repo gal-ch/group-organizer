@@ -4,7 +4,6 @@
 {% load static %}
 {% block script %}
 
-    {#    <script src="{% static 'static_root/main/js/main.js' %}">#}
     <script>
         /** to do:
          * fix event update
@@ -17,7 +16,7 @@
         document.addEventListener('DOMContentLoaded', function()
         {
             function get_calendar_height() {
-                return $(window).height()-30;
+                return $(window).height()-50;
             }
             let add_to_in_charge_msg = document.getElementById("success-alert");
             let current_event = null;
@@ -29,15 +28,15 @@
                 selectable: true,
                 height: get_calendar_height(),
                 customButtons: {
-                    mySideNav: {
-                        className: 'button-collapse black-text',
+                    custom1: {
+                        text: 'menu',
                         click: function() {
-                            $('#fluidModalSuccess').modal('show')
+                            $('#sidebar').toggleClass('active');
                         }
                     }
                 },
-                headerToolbar: {
-                    left: 'mySideNav prev,next today',
+                header: {
+                    left: 'custom1 prev,next today',
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay',
                 },
@@ -47,9 +46,6 @@
                 },
 
                 dateClick: function(info) {
-
-                    console.log(Object.values(events_sources));
-                    console.log(calendar.refetchEvents());
                     $('#createEventModal').modal('show');
                     $('#id_take_on_event').click(function () {
                         $("#id_charge_num").attr('disabled', !this.checked)
@@ -63,7 +59,7 @@
                         let charge_num = $('#id_charge_num').val();
                         $.ajax({
                             type: 'POST',
-                            url: '{%  url "main:calendar" user.pk %}',
+                            url: '{%  url "main:calendar" %}',
                             data: {
                                 title: title,
                                 description: description,
@@ -197,7 +193,7 @@
                 calendar.addEventSource({
                     id: group_id,
                     events: function (info, successCallback, failureCallback) {
-                        var url = `http://127.0.0.1:8000/update-event-source/${group_id}/`;
+                        var url = `http://127.0.0.1:8000/api/update-event-source/${group_id}/`;
                         fetch(url, {
                             method: 'GET',
                             headers: {
@@ -233,6 +229,7 @@
 
 
             var groups = document.getElementsByClassName("filterEventsByGroup");
+            console.log(groups)
             for(let i=0;i < groups.length; i++)
             {
                 groups[i].addEventListener("change", function() {
@@ -395,8 +392,6 @@
                     e.innerHTML = '<i class="fas fa-check-circle"></i>';
                     var elem = e.parentNode;
                     var elem_btns = elem.getElementsByTagName('button');
-                    console.log(elem_btns);
-
                 }).catch(function (error) {
                 console.log('ERROR:', error)
             });
@@ -406,60 +401,57 @@
 {% endblock %}
 
 {% block content %}
-    <div class="container-fluid p-2">
-        <div class="row p-3">
-            <div class="col" id='calendar'></div>
-            <div class="col-4 col-md-2 border sidebar" style="background-color: rgba(32,80,103,0.34)">
-                <h3 class="sidebar-title">hey {{ request.user.username }}</h3>
-                <ul class="list-group list-group-flush fa-ul ml-3 my-5 list-unstyled menu-headers">
-                    <!-- Side navigation links -->
-                    <li><i class="fas fa-user-friends fa-sm"></i><a class="collapsible p-2"  data-toggle="collapse" data-target="#collapseUsers"
-                                                                    aria-expanded="false" aria-controls="collapseUsers">see users in groups</a>
-                        <i class="fas fa-angle-down rotate-icon"></i>
-                        <div class="collapse" id="collapseUsers">
-                            {% for group in users_in_groups %}
-                                {{ group.group_name }}
-                                <ul class="list-group list-unstyled">
-                                    {% for user in group.users %}
-                                        <li><a href="#" class="waves-effect">
-                                            {{ user.user_name }}</a>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            {% endfor %}
-                        </div>
-                    </li>
-
-                    <li><i class="fas fa-layer-group fa-sm"></i> <a class="collapsible p-2"  data-toggle="collapse" data-target="#collapseGroups"
-                                                                    aria-expanded="false" aria-controls="collapseGroups">your groups</a>
-                        <i class="fas fa-angle-down rotate-icon"></i>
-                        <div class="collapse" id="collapseGroups">
-                            <ul class="list-group mr-auto list-unstyled">
-                                {% for group in user_groups %}
-                                    <li>  <input type="checkbox" class="form-check-input filterEventsByGroup" id="groupCheckBox" value="{{ group.id }}">
-                                        <label class="form-check-label" for="groupCheckBox"> {{ group.name }}</label> </li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    </li>
-                    <li><i class="fas fa-filter fa-sm"></i><a class="collapsible p-2"  data-toggle="collapse" data-target="#collapseOptions"
-                                                              aria-expanded="false" aria-controls="collapseOptions"> more options</a>
-                        <i class="fas fa-angle-down rotate-icon"></i>
-                        <div class="collapse" id="collapseOptions">
-                            <ul class="list-group list-unstyled">
-                                <li><a href="#" class="waves-effect">See your event</a></li>
-                                <li><a href="{% url 'accounts:create-group' %}" class="waves-effect">create new group</a></li>
-                                <li><a type="button" class="btn btn-primary" data-toggle="modal" data-target="#addContactsForm">add contacts</a></li>
-                                <li><a href="{% url 'account_logout' %}" class="waves-effect">logout</a></li>
-                                <li><a type="button" class="btn btn-primary" data-toggle="modal" data-target="#friendsRequest">friends request</a></li>
-                            </ul>
-                        </div>
-                    </li>
-                    <!--/. Side navigation links -->
-                </ul>
+    <!-- Sidebar -->
+    <div class="wrapper">
+    <nav id="sidebar">
+        <div class="d-flex flex-row justify-content-center pt-5">
+            <div class="sidebar-header">
+                <i class="fas fa-calendar fa-2x"></i>
+                <i class="far fa-calendar-alt fa-2x"></i>
+                <i class="fas fa-calendar-check fa-2x"></i>
             </div>
-        </div>
 
+        </div>
+        <ul class="list-unstyled components">
+            <p class="font-weight-bold text-center">hey {{ request.user.username }}</p>
+            <li class="active"><a href="#groupsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">your groups</a>
+                <ul class="components list-unstyled" id="groupsSubmenu">
+                    {% for group in object_list %}
+                        <li> <input type="checkbox" class="filterEventsByGroup" value="{{ group.pk }}">
+                            <label for="filterEventsByGroup"><a href="#groupCheckBox-{{ group.pk }}" data-toggle="collapse"
+                                                                class="dropdown-toggle group-dropdown" aria-expanded="false" id="group-dropdown">
+                                {{ group.name }}</a></label>
+                            <div class="collapse" id="groupCheckBox-{{ group.pk }}">
+                                {% for user in group.user_set.all %}
+                                    <a href="">{{ user.username }}</a>
+                                {% endfor %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </li>
+
+            <li>
+                <a href="{% url 'accounts:create-group' %}" class="waves-effect">create new group</a>
+            </li>
+
+            <li>
+                <a data-toggle="modal" data-target="#addContactsForm">add contacts</a>
+            </li>
+
+            <li>
+                <a  data-toggle="modal" data-target="#friendsRequest">friends request</a>
+            </li>
+
+            <li>
+                <a href="{% url 'account_logout' %}" class="waves-effect">logout</a>
+            </li>
+
+        </ul>
+    </nav>
+        <!-- Sidebar -->
+    <div class="container-fluid p-4">
+        <div id='calendar'></div>
     </div>
 
     <!-- Manage users PopUp -->
@@ -582,7 +574,7 @@
     </div>
     <!-- Add Contacts Form  -->
 
-    <!-- Add Contacts Form -->
+    <!-- Friends Request Model -->
     <div class="modal fade" id="friendsRequest" tabindex="-1" role="dialog" aria-labelledby="friendsRequestPopUp"
          aria-hidden="true">
         <div class="modal-dialog modal-md" role="document">
@@ -598,11 +590,11 @@
                         <ul class="list-group list-unstyled mx-2">
                         {% for f_request in user_friends_request %}
                             <li class="friends-request-item d-flex flex-row justify-content-around">
-                            <h5 class="align-self-center">{{ f_request.sender }}</h5>
-                            <button class="btn btn-default btn-sm" value="{{ f_request.sender.pk }}"
-                                    id="approveFriendRequest" onclick="response_to_friend_request(this, true)">approve</button>
-                            <button class="btn btn-default btn-sm" value="{{ f_request.sender.pk }}"
-                                    id="declineFriendRequest" onclick="response_to_friend_request(this, false)">decline</button>
+                                <h5 class="align-self-center">{{ f_request.sender }}</h5>
+                                <button class="btn btn-default btn-sm" value="{{ f_request.sender.pk }}"
+                                        id="approveFriendRequest" onclick="response_to_friend_request(this, true)">approve</button>
+                                <button class="btn btn-default btn-sm" value="{{ f_request.sender.pk }}"
+                                        id="declineFriendRequest" onclick="response_to_friend_request(this, false)">decline</button>
                             </li>
                         {% endfor %}
                     {% endif %}
@@ -615,7 +607,7 @@
             </div>
         </div>
     </div>
-    <!-- Add Contacts Form  -->
+    <!-- Friends Request Model -->
 
 
 

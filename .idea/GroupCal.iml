@@ -21,6 +21,8 @@
     <orderEntry type="library" name="tooltip" level="application" />
     <orderEntry type="library" name="mdb" level="application" />
     <orderEntry type="library" name="materialize" level="application" />
+    <orderEntry type="library" name="jquery.mCustomScrollbar.concat" level="application" />
+    <orderEntry type="library" name="jquery.mCustomScrollbar" level="application" />
   </component>
   <component name="TemplatesService">
     <option name="TEMPLATE_CONFIGURATION" value="Django" />

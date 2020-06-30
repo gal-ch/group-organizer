@@ -16,6 +16,11 @@ from rest_framework import status
 User = get_user_model()
 
 
+@login_required
+def login_redirect(request):
+    return redirect('main:calendar', pk=request.user.pk)
+
+
 class JointLoginSignupView(LoginView):
     form_class = LoginForm
     signup_form = SignupForm
@@ -34,9 +39,13 @@ login = JointLoginSignupView.as_view()
 
 
 class GroupCreate(CreateView):
-    def get(self, request, *args, **kwargs):
-        context = {'form': EditGroupForm()}
-        return render(request, 'account/group_create.html', context)
+    form_class = EditGroupForm
+    template_name = 'account/group_create.html'
+
+    def get_form_kwargs(self):
+        kwargs = super(GroupCreate, self).get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
 
     def post(self, request, *args, **kwargs):
         form = EditGroupForm(request.POST)
@@ -98,6 +107,7 @@ def send_friend_request(request):
     elif not created and friends_request:
         return JsonResponse({'exists': 'you and {} already friends'.format(receiver.username)}, status=200)
     return JsonResponse({"error": ''}, status=400)
+
 
 # to fix
 @api_view(['POST'])

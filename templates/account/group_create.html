@@ -25,18 +25,20 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="form-group">
                      <!-- users-->
-                        {% for user in form.users %}
-                            <div class="custom-control custom-checkbox">
-                                {{ user }}
+                    {% if form.friends.field.choices.queryset.all|length > 0 %}
+                        {% for friend in form.friends %}
+                            <div class="custom-control custom-checkbox h5">
+                                {{ friend }}
                             </div>
                         {% endfor %}
+                    {% else %}
+                    <h5>you have no friends to add</h5>
+                    {% endif %}
                     </div>
-
                     <button class=" btn btn-info my-4 btn-block" type="submit">submit</button>
-                     <a type="button" href="{% url "main:calendar" user.pk %}" class="btn btn-info my-4 btn-block">home</a>
+                     <a type="button" href="{% url "main:calendar" %}" class="btn btn-info my-4 btn-block">home</a>
 
                 </form>
             </div>

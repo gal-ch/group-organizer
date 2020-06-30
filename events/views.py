@@ -17,7 +17,7 @@ class EventCreate(CreateView):
 
     def get_form_kwargs(self):
         kwargs = super(EventCreate, self).get_form_kwargs()
-        kwargs['user'] = self.request.user.pk
+        kwargs['user'] = self.request.user
         return kwargs
 
     def post(self, request, *args, **kwargs):

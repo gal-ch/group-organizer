@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.shortcuts import redirect
-from django.views.generic import DetailView
+from django.views.generic import DetailView, ListView
 from django.views.generic.edit import FormMixin
 from django.contrib.auth.models import Group
 from django.http import JsonResponse
@@ -14,7 +14,7 @@ import datetime
 User = get_user_model()
 
 
-class CalendarView(FormMixin, DetailView):
+class CalendarView(FormMixin, ListView):
     model = User
     template_name = 'main/calendar.html'
     form_class = EventForm
@@ -35,25 +35,26 @@ class CalendarView(FormMixin, DetailView):
         kwargs.update({'request': self.request})
         return kwargs
 
+    def get_queryset(self):
+        user = self.request.user
+        user_groups_qs = Group.objects.filter(user=user)
+        return user_groups_qs
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         '''get the event related to current user'''
-        user_groups = Group.objects.filter(user=self.object)
+        user = self.request.user
         context['events'] = [{'group_id': group.pk, 'group_events': [{'id': o.id, 'title': o.title, 'description': o.description,
                                                                       'start': o.start_time.isoformat(), 'end': o.end_time.isoformat(),
                                                                       'allDay': True, 'to_do': o.take_on_event, 'charge_num': o.charge_num,
-                                                                      'user_id': o.user_id} for o in group.events.all()]} for group in user_groups]
-        user_groups = Group.objects.filter(user=self.object)
-        context['user_groups'] = user_groups
-        context['users_in_groups'] = [{'group_name': group.name, 'users': [{'user_name': user.username} for user in group.user_set.all()]} for group in user_groups]
-        context['manger_perm'] = self.object.has_perm('auth.change_group')
-        context['user_friends_request'] = FriendRequest.objects.filter(receiver=self.object)
+                                                                      'user_id': o.user_id} for o in group.events.all()]} for group in self.get_queryset()]
+        context['manger_perm'] = user.has_perm('auth.change_group')
+        context['user_friends_request'] = FriendRequest.objects.filter(receiver=user)
         form_class = self.get_form_class()
         context['form'] = self.get_form(form_class)
         return context
 
     def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
         form = self.get_form()
         if form.is_valid():
             return self.form_valid(form)
