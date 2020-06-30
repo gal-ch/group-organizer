@@ -57,6 +57,7 @@ class EventCreate(CreateView):
                     "start_time": new_event.start_time,
                     "end_time": new_event.end_time,
                 }
+                print(response)
                 # send to client side.
                 return JsonResponse(response, status=200)
             else:
@@ -90,7 +91,7 @@ def event_detail(request, pk):
 
 @api_view(['PUT'])
 @permission_classes((permissions.AllowAny,))
-def event_update(request, pk):
+def event_update_users(request, pk):
     event = Event.objects.get(id=pk)
     response = event.check_if(request.user.pk)
     print(response)

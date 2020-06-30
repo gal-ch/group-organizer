@@ -11,10 +11,10 @@ class Event(models.Model):
     end_time = models.DateTimeField()
     title = models.CharField(max_length=50)
     description = models.TextField(blank=True, null=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='users_events')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='users_events')
     take_on_event = models.BooleanField()
     charge_num = models.IntegerField(default=0, validators=[MaxValueValidator(10), MinValueValidator(0)])
-    charge_users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='in_charge')
+    charge_users = models.ManyToManyField(User, related_name='in_charge_of')
 
     def __str__(self):
         return self.title
@@ -31,13 +31,15 @@ class Event(models.Model):
     def check_if(self, user_id):
         ''' check if it possible to add the user to the in charge
         users list of the event and return response accordingly '''
-        if User.objects.filter(event=self.pk, in_charge=user_id):
-            return 1
+        user = User.objects.get(id=user_id)
+        if user in self.charge_users.all():
+            # user already in this list
+            return 0
         if self.charge_users.all().count() == self.charge_num:
-            return 2
-        user_obj = User.objects.get(id=user_id)
-        self.charge_users.add(user_obj)
-        return 0
+            # list is full
+            return 1
+        self.charge_users.add(user)
+        return 2
 
 
 

@@ -46,6 +46,7 @@
                 },
 
                 dateClick: function(info) {
+                    $("#id_charge_num").attr('disabled', true)
                     $('#createEventModal').modal('show');
                     $('#id_take_on_event').click(function () {
                         $("#id_charge_num").attr('disabled', !this.checked)
@@ -55,7 +56,8 @@
                         let title=$('#id_title').val();
                         let description=$('#id_description').val();
                         let date = info.dateStr;
-                        let to_do = $('#id_take_on_event').val();
+                        let to_do = $('#id_take_on_event').prop('checked');
+                        console.log(to_do)
                         let charge_num = $('#id_charge_num').val();
                         $.ajax({
                             type: 'POST',
@@ -76,6 +78,7 @@
                                  * hide the form window
                                  * add the event to the calendar
                                  ***/
+                                $('#eventForm')[0].reset();
                                 $('#createEventModal').modal('hide');
                                 let new_event = {
                                     id: response.instance_id,
@@ -86,6 +89,7 @@
                                     extendedProps: {
                                         to_do: to_do,
                                         charge_num: charge_num,
+
                                     },
                                 };
                             },
@@ -117,7 +121,7 @@
                         clear_event_data();
                         update_event_window(info);
                     } else {
-                        fetch(`http://127.0.0.1:8000/event-detail/${info.event.id}/`, {
+                        fetch(`http://127.0.0.1:8000/api/event-detail/${info.event.id}/`, {
                             method: 'GET',
                             headers: {
                                 'Content-type': 'application/json',
@@ -135,7 +139,7 @@
                                      * the list is not full
                                      * the event is a to do event (just in case)
                                      **/
-                                    fetch(`http://127.0.0.1:8000/event-update-users/${info.event.id}/`, {
+                                    fetch(`http://127.0.0.1:8000/api/event-update-users/${info.event.id}/`, {
                                         method: 'PUT',
                                         headers: {
                                             'Content-type': 'application/json',
@@ -147,19 +151,19 @@
                                             console.log(data);
                                             switch (data) {
                                                 case 0:
+                                                    add_to_in_charge_msg.innerHTML = 'you already in this list';
+                                                    add_to_in_charge_msg.style.display = 'block';
+                                                    break;
+                                                case 1:
+                                                    add_to_in_charge_msg.innerHTML = 'this list is full';
+                                                    add_to_in_charge_msg.style.display = 'block';
+                                                    break;
+                                                case 2:
                                                     let ul = document.getElementById("eventChargeUsers");
                                                     let li = document.createElement('li');
                                                     li.className = "list-group-item";
                                                     li.appendChild(document.createTextNode('{{ user }}'));
                                                     ul.appendChild(li);
-                                                    break;
-                                                case 1:
-                                                    add_to_in_charge_msg.innerHTML = 'you already in this list';
-                                                    add_to_in_charge_msg.style.display = 'block';
-                                                    break;
-                                                case 2:
-                                                    add_to_in_charge_msg.innerHTML = 'this list is full';
-                                                    add_to_in_charge_msg.style.display = 'block';
                                                     break;
                                             }
                                         });
@@ -189,7 +193,7 @@
 
             calendar.render();
             function get_event_from_source(group_id) {
-                console.log(group_id)
+                console.log(group_id);
                 calendar.addEventSource({
                     id: group_id,
                     events: function (info, successCallback, failureCallback) {
@@ -214,7 +218,7 @@
                                         textColor: 'black',
                                         charge_num: $(this).attr('charge_num'),
                                         to_do: $(this).attr('to_do'),
-                                        user_id: $(this).attr('to_do'),
+                                        user_id: $(this).attr('user_id'),
 
                                     })
                                 });
@@ -244,17 +248,17 @@
                 });
             }
 
-
             function update_event_window(info){
-                console.log(info.event.title)
-                document.getElementsByClassName("eventTitle").innerHTML = info.event.title;
+                console.log(info);
+                var login_user_id = {{ user.pk }}
+                document.getElementById("eventTitle").innerHTML = info.event.title;
                 document.getElementById("eventDescription").innerHTML = info.event.extendedProps.description.toString();
                 document.getElementById("eventStart").innerHTML = info.event.start;
                 document.getElementById("eventEnd").innerHTML = info.event.end;
                 document.getElementById("eventToDoBtn").disabled = info.event.extendedProps.to_do === "False";
-                console.log('{{ user.pk }}');
                 console.log(info.event.extendedProps.user_id);
-                if('{{ user.pk }}' === info.event.extendedProps.user_id){
+                if(login_user_id  === parseInt(info.event.extendedProps.user_id)){
+                    console.log('enter');
                     document.getElementById('UpdateEventBtn').style.display ='inline';
                     document.getElementById('UpdateEventBtn').addEventListener("click", function () {
                         $('#eventDetails').modal('hide');
@@ -291,6 +295,7 @@
                 // document.getElementById("id_end_hour").value = ;
                 $('#createEventModal').modal('show');
             }
+
             function clear_event_data() {
                 document.getElementById("eventTitle").innerHTML = '';
                 document.getElementById("eventDescription").innerHTML = '';
@@ -298,8 +303,7 @@
                 document.getElementById("eventEnd").innerHTML = '';
                 $('#eventChargeUsers').empty();
                 add_to_in_charge_msg.innerHTML = '';
-                add_to_in_charge_msg.style.display = 'none';
-            }
+                add_to_in_charge_msg.style.display = 'none';}
 
             function open_users_manager_window() {
                 $('#manageUsersWindow').modal('show');
@@ -449,7 +453,7 @@
 
         </ul>
     </nav>
-        <!-- Sidebar -->
+    <!-- Sidebar -->
     <div class="container-fluid p-4">
         <div id='calendar'></div>
     </div>

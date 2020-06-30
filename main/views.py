@@ -88,7 +88,7 @@ class CalendarView(FormMixin, ListView):
             new_event.charge_num = self.request.POST.get('charge_num')
             new_event.start_time = start_date
             new_event.end_time = end_date
-            if self.request.POST.get('to_do') == 'on':
+            if self.request.POST.get('to_do') == 'true':
                 new_event.take_on_event = True
             new_event.save()
             group_obj.events.add(new_event)
