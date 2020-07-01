@@ -18,9 +18,9 @@
             function get_calendar_height() {
                 return $(window).height()-50;
             }
-            let add_to_in_charge_msg = document.getElementById("success-alert");
+            let add_to_in_charge_msg = getElement("success-alert");
             let current_event = null;
-            let calendarEl = document.getElementById('calendar');
+            let calendarEl = getElement('calendar');
             let calendar = new FullCalendar.Calendar(calendarEl, {
                 plugins: [ 'interaction', 'dayGrid', 'timeGrid' ],
                 defaultView: 'dayGridMonth',
@@ -46,10 +46,10 @@
                 },
 
                 dateClick: function(info) {
-                    $("#id_charge_num").attr('disabled', true)
+                    getElement('id_charge_num').setAttribute("disabled", true);
                     $('#createEventModal').modal('show');
-                    $('#id_take_on_event').click(function () {
-                        $("#id_charge_num").attr('disabled', !this.checked)
+                    getElement('id_take_on_event').addEventListener('click', function () {
+                        getElement('id_charge_num').setAttribute("disabled", !this.checked);
                     });
                     $('#eventForm').submit(function (e) {
                         e.preventDefault();
@@ -57,7 +57,6 @@
                         let description=$('#id_description').val();
                         let date = info.dateStr;
                         let to_do = $('#id_take_on_event').prop('checked');
-                        console.log(to_do)
                         let charge_num = $('#id_charge_num').val();
                         $.ajax({
                             type: 'POST',
@@ -90,6 +89,7 @@
                                         to_do: to_do,
                                         charge_num: charge_num,
 
+
                                     },
                                 };
                             },
@@ -100,25 +100,25 @@
                     });
                 },
                 eventClick: function(info) {
-                    /**event window is open so user can:
-                     * add them self to users in charge list
-                     * update the event (if they created it -- verify in update_event_window(info))
+                    /** event window is open so user can:
+                     *  add them self to users in charge list
+                     *  update the event (if they created it -- verify in update_event_window(info))
                      **/
                     info.jsEvent.preventDefault();
+                    clear_event_data();
                     current_event = info;
-                    /*** fetch the event data from the server and display the info according to it type (to do or not to do)
-                     * check if someone need to do the event:
+                    /** fetch the event data from the server and display the info according to it type (to do or not to do)
+                     *  check if someone need to do the event:
                      *  info.event.extendedProps.to_do === 'False':
                      *  dont show the list of users that in charge to do the event
                      *
-                     * info.event.extendedProps.to_do === 'True':
-                     * send the event id to the server
-                     * get the users list that in charge to do the event from the serer
-                     * show the list in event window
-                     *
-                     ***/
-                    if (info.event.extendedProps.to_do === 'False') {
-                        clear_event_data();
+                     *  info.event.extendedProps.to_do === 'True':
+                     *  send the event id to the server
+                     *  get the users list that in charge to do the event from the serer
+                     *  show the list in event window
+                     **/
+                    if (info.event.extendedProps.to_do === false) {
+                        console.log('not to do event');
                         update_event_window(info);
                     } else {
                         fetch(`http://127.0.0.1:8000/api/event-detail/${info.event.id}/`, {
@@ -128,16 +128,17 @@
                             },
                         }).then(response => response.json())
                             .then(data => {
-                                console.log(data);
-                                show_in_charge_users(data.charge_users);
-                                clear_event_data();
+                                /** ToDo not sure i need to ajax here -- need to check ssa
+                                 **/
+                                console.log(info);
+                                show_in_charge_users(info);
                                 update_event_window(info);
-                                document.getElementById("eventToDoBtn").addEventListener("click", function () {
+                                getElement("eventToDoBtn").addEventListener("click", function () {
                                     /** event is a to do event and user want to add himself to
-                                     * the list of users that in charge -->> check with the server:
-                                     * that the user is not in the list
-                                     * the list is not full
-                                     * the event is a to do event (just in case)
+                                     *  the list of users that in charge -->> check with the server:
+                                     *  that the user is not in the list
+                                     *  the list is not full
+                                     *  the event is a to do event (just in case)
                                      **/
                                     fetch(`http://127.0.0.1:8000/api/event-update-users/${info.event.id}/`, {
                                         method: 'PUT',
@@ -159,7 +160,7 @@
                                                     add_to_in_charge_msg.style.display = 'block';
                                                     break;
                                                 case 2:
-                                                    let ul = document.getElementById("eventChargeUsers");
+                                                    let ul = getElement("eventChargeUsers");
                                                     let li = document.createElement('li');
                                                     li.className = "list-group-item";
                                                     li.appendChild(document.createTextNode('{{ user }}'));
@@ -182,7 +183,6 @@
                         },
                         success: function(response) {
                             console.log(response)
-
                         },
                         error : function(xhr,errmsg,err) {
                             console.log(xhr.status + ": " + xhr.responseText);
@@ -192,8 +192,12 @@
             });
 
             calendar.render();
+
+            function getElement(elm){
+                return document.getElementById(elm);
+            }
+
             function get_event_from_source(group_id) {
-                console.log(group_id);
                 calendar.addEventSource({
                     id: group_id,
                     events: function (info, successCallback, failureCallback) {
@@ -219,91 +223,102 @@
                                         charge_num: $(this).attr('charge_num'),
                                         to_do: $(this).attr('to_do'),
                                         user_id: $(this).attr('user_id'),
-
+                                        charge_users: $(this).attr('charge_users'),
+                                        backgroundColor: data.color,
+                                        borderColor: data.color,
                                     })
                                 });
                                 successCallback(events);
                                 console.log(calendar.getEventSources())
                             })
                     },
-
                 });
-                calendar.refetchEvents()
+
+                console.log(calendar.getEventSources())
             }
+
 
 
             var groups = document.getElementsByClassName("filterEventsByGroup");
-            console.log(groups)
-            for(let i=0;i < groups.length; i++)
-            {
+            /** add event listener to each group and passing the group id and the group color
+             *  if group is checked -- update the calendar with events of this group
+             *  if group is unchecked -- remove the group from the calendar events sources
+             **/
+
+            for(let i=0;i < groups.length; i++) {
                 groups[i].addEventListener("change", function() {
-                    console.log(parseInt(this.value[0]))
+                    console.log(typeof(this.value));
                     if (this.checked === true) {
-                        get_event_from_source(parseInt(this.value[0]), this.value[1]);
+                        console.log('group checkedbox value', parseInt(this.value[0]))
+                        get_event_from_source(parseInt(this.value));
                     }
                     else {
-                        calendar.getEventSourceById(parseInt(this.value[0])).remove();
-
+                        console.log(calendar.getEventSourceById(parseInt(this.value)))
+                        calendar.getEventSourceById(parseInt(this.value)).remove();
                     }
                 });
             }
 
+            function clear_event_data() {
+                getElement('eventTitle').innerHTML = '';
+                getElement('eventDescription').innerHTML = '';
+                getElement('eventStart').innerHTML = '';
+                getElement('eventEnd').innerHTML = '';
+                add_to_in_charge_msg.innerHTML = '';
+                add_to_in_charge_msg.style.display = 'none';
+                $('#eventChargeUsers').empty();
+                getElement('eventToDoBtn').style.dis = 'none';
+            }
+
+            /** replace the content of the event window with the event info that was clicked
+             **/
             function update_event_window(info){
-                console.log(info);
-                var login_user_id = {{ user.pk }}
-                document.getElementById("eventTitle").innerHTML = info.event.title;
-                document.getElementById("eventDescription").innerHTML = info.event.extendedProps.description.toString();
-                document.getElementById("eventStart").innerHTML = info.event.start;
-                document.getElementById("eventEnd").innerHTML = info.event.end;
-                document.getElementById("eventToDoBtn").disabled = info.event.extendedProps.to_do === "False";
+                var login_user_id = {{ user.pk }};
+                getElement("eventTitle").innerHTML = info.event.title;
+                getElement("eventDescription").innerHTML = info.event.extendedProps.description.toString();
+                getElement("eventStart").innerHTML = info.event.start;
+                getElement("eventEnd").innerHTML = info.event.end;
+                getElement("eventToDoBtn").disabled = info.event.extendedProps.to_do === "False";
                 console.log(info.event.extendedProps.user_id);
-                if(login_user_id  === parseInt(info.event.extendedProps.user_id)){
+                if( parseInt('{{ user.pk }}')  === parseInt(info.event.extendedProps.user_id)){
                     console.log('enter');
-                    document.getElementById('UpdateEventBtn').style.display ='inline';
-                    document.getElementById('UpdateEventBtn').addEventListener("click", function () {
+                    getElement('UpdateEventBtn').style.display ='inline';
+                    getElement('UpdateEventBtn').addEventListener("click", function () {
                         $('#eventDetails').modal('hide');
                         update_event_form(info);
                     });
                 }
                 else{
-                    document.getElementById('UpdateEventBtn').style.display ='none';
+                    getElement('UpdateEventBtn').style.display ='none';
                 }
                 $('#eventDetails').modal('show');
             }
 
-            function show_in_charge_users(users_list) {
-                $("#eventToDoBtn").disabled = false;
-                let ul = document.getElementById("eventChargeUsers");
+            /** in case the event is a to do event - we need to update the list of user that in charge
+             *  if the user is in the list a undo button will be display instead of the to it button
+             **/
+            function show_in_charge_users(info) {
+                var users_list = info.event.extendedProps.charge_users;
+                var list_ul = getElement("eventChargeUsers");
+                getElement('eventToDoBtn').removeAttribute('disabled');
+                list_ul.innerHTML = 'How is in charge?';
                 for (let i = 0; i < users_list.length; i++){
-                    let name = users_list[i];
-                    console.log(name);
-                    let li = document.createElement('li');
-                    li.className ="list-group-item";
-                    li.appendChild(document.createTextNode(name));
-                    ul.appendChild(li);
+                    var name = users_list[i];
+                    var item = document.createElement('li');
+                    item.className ="list-group-item";
+                    item.appendChild(document.createTextNode(name));
+                    list_ul.appendChild(item);
                 }
             }
 
             function update_event_form(info){
-                console.log(info);
-                document.getElementById("id_title").value = info.event.title;
-                document.getElementById("id_description").value = info.event.extendedProps.description.toString();
-                document.getElementById("id_take_on_event").checked = info.event.extendedProps.to_do;
-                document.getElementById("id_charge_num").value = info.event.extendedProps.charge_num;
-                document.getElementById("id_charge_num").value = info.event.extendedProps.charge_num;
-                // document.getElementById("id_start_hour").op = ;
-                // document.getElementById("id_end_hour").value = ;
+                getElement("id_title").value = info.event.title;
+                getElement("id_description").value = info.event.extendedProps.description.toString();
+                getElement("id_take_on_event").checked = info.event.extendedProps.to_do;
+                getElement("id_charge_num").value = info.event.extendedProps.charge_num;
+                // ToDo add hours to select
                 $('#createEventModal').modal('show');
             }
-
-            function clear_event_data() {
-                document.getElementById("eventTitle").innerHTML = '';
-                document.getElementById("eventDescription").innerHTML = '';
-                document.getElementById("eventStart").innerHTML = '';
-                document.getElementById("eventEnd").innerHTML = '';
-                $('#eventChargeUsers').empty();
-                add_to_in_charge_msg.innerHTML = '';
-                add_to_in_charge_msg.style.display = 'none';}
 
             function open_users_manager_window() {
                 $('#manageUsersWindow').modal('show');
@@ -327,7 +342,6 @@
             }
 
             const user_input = $("#user-input");
-            const search_icon = $('#search-icon');
             const users_div = $('#replaceable-content');
             const endpoint = '/search-users-view/';
             const delay_by_in_ms = 700;
@@ -360,8 +374,6 @@
                                     console.log('ERROR:', error)
                                 });
                             })
-                            // stop animating search icon
-                            // search_icon.removeClass('blink')
                         })
                     })
             };
@@ -407,55 +419,56 @@
 {% block content %}
     <!-- Sidebar -->
     <div class="wrapper">
-    <nav id="sidebar">
-        <div class="d-flex flex-row justify-content-center pt-5">
-            <div class="sidebar-header">
-                <i class="fas fa-calendar fa-2x"></i>
-                <i class="far fa-calendar-alt fa-2x"></i>
-                <i class="fas fa-calendar-check fa-2x"></i>
+        <nav id="sidebar">
+            <div class="d-flex flex-row justify-content-center pt-5">
+                <div class="sidebar-header">
+                    <i class="fas fa-calendar fa-2x"></i>
+                    <i class="far fa-calendar-alt fa-2x"></i>
+                    <i class="fas fa-calendar-check fa-2x"></i>
+                </div>
+
             </div>
+            <ul class="list-unstyled components">
+                <p class="font-weight-bold text-center">hey {{ request.user.username }}</p>
+                <li class="active"><a href="#groupsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">your groups</a>
+                    <ul class="components list-unstyled" id="groupsSubmenu">
+                        {% for group in object_list %}
+                            <li> <input type="checkbox" class="filterEventsByGroup" value='{{ group.pk }}'>
+                                <label for="filterEventsByGroup"><a href="#groupCheckBox-{{ group.pk }}" data-toggle="collapse"
+                                                                    class="dropdown-toggle group-dropdown" aria-expanded="false" id="group-dropdown">
+                                    {{ group.name }}</a></label>
+                                <div class="collapse" id="groupCheckBox-{{ group.pk }}">
+                                    {% for user in group.user_set.all %}
+                                        <a href="">{{ user.username }}</a>
+                                    {% endfor %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </li>
 
+                <li>
+                    <a href="{% url 'accounts:create-group' %}" class="waves-effect">create new group</a>
+                </li>
+
+                <li>
+                    <a data-toggle="modal" data-target="#addContactsForm">add contacts</a>
+                </li>
+
+                <li>
+                    <a  data-toggle="modal" data-target="#friendsRequest">friends request</a>
+                </li>
+
+                <li>
+                    <a href="{% url 'account_logout' %}" class="waves-effect">logout</a>
+                </li>
+
+            </ul>
+        </nav>
+        <!-- Sidebar -->
+        <div class="container-fluid p-4">
+            <div id='calendar'></div>
         </div>
-        <ul class="list-unstyled components">
-            <p class="font-weight-bold text-center">hey {{ request.user.username }}</p>
-            <li class="active"><a href="#groupsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">your groups</a>
-                <ul class="components list-unstyled" id="groupsSubmenu">
-                    {% for group in object_list %}
-                        <li> <input type="checkbox" class="filterEventsByGroup" value="{{ group.pk }}">
-                            <label for="filterEventsByGroup"><a href="#groupCheckBox-{{ group.pk }}" data-toggle="collapse"
-                                                                class="dropdown-toggle group-dropdown" aria-expanded="false" id="group-dropdown">
-                                {{ group.name }}</a></label>
-                            <div class="collapse" id="groupCheckBox-{{ group.pk }}">
-                                {% for user in group.user_set.all %}
-                                    <a href="">{{ user.username }}</a>
-                                {% endfor %}
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </li>
-
-            <li>
-                <a href="{% url 'accounts:create-group' %}" class="waves-effect">create new group</a>
-            </li>
-
-            <li>
-                <a data-toggle="modal" data-target="#addContactsForm">add contacts</a>
-            </li>
-
-            <li>
-                <a  data-toggle="modal" data-target="#friendsRequest">friends request</a>
-            </li>
-
-            <li>
-                <a href="{% url 'account_logout' %}" class="waves-effect">logout</a>
-            </li>
-
-        </ul>
-    </nav>
-    <!-- Sidebar -->
-    <div class="container-fluid p-4">
-        <div id='calendar'></div>
     </div>
 
     <!-- Manage users PopUp -->
@@ -508,7 +521,7 @@
                         <button type="button" class="close" >x</button>
                         <span class="glyphicon glyphicon-ok"></span>
                     </div>
-                    <ul class="list-group list-group-flush" id="eventChargeUsers" title="How is doing?">How is doing?</ul>
+                    <ul class="list-group list-group-flush" id="eventChargeUsers"></ul>
                 </div>
                 <div class="modal-footer justify-content-center">
                     <button id="eventToDoBtn" type="button" class="btn btn-blue-grey">Do it</button>
@@ -565,7 +578,7 @@
                         <span><i id="search-icon" class="fas fa-search"></i><input id="user-input" placeholder="Search"></span>
                     </div>
 
-                    <div id="replaceable-content" class="col" style="background-color: #f53148">
+                    <div id="replaceable-content" class="col">
                         {% include 'account/users_search_result.html' %}
                     </div>
                 </div>
@@ -618,5 +631,3 @@
 
 
 {% endblock %}
-
-

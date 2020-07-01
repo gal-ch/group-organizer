@@ -16,11 +16,6 @@ from rest_framework import status
 User = get_user_model()
 
 
-@login_required
-def login_redirect(request):
-    return redirect('main:calendar', pk=request.user.pk)
-
-
 class JointLoginSignupView(LoginView):
     form_class = LoginForm
     signup_form = SignupForm
@@ -48,23 +43,24 @@ class GroupCreate(CreateView):
         return kwargs
 
     def post(self, request, *args, **kwargs):
-        form = EditGroupForm(request.POST)
+        form = EditGroupForm(request.POST, user=request.user)
         '''create a group -> add users -> give the created user perm to change the group '''
-        user = User.objects.get(id=request.user.pk)
+        current_user = User.objects.get(id=request.user.pk)
         perm = Permission.objects.get(codename='change_group')
-        user.user_permissions.add(perm)
-        user.save()
-        print(user.user_permissions)
-        print(user.has_perm('auth.change_group'))
+        current_user.user_permissions.add(perm)
+        current_user.save()
+        print(current_user.user_permissions)
+        print(current_user.has_perm('auth.change_group'))
         if form.is_valid():
             new_group = form.save(commit=False)
-            # group_name = request.POST.get('group_name')
-            # new_group = Group.objects.create(name=group_name)
             new_group.save()
-            users = [User.objects.get(pk=pk) for pk in request.POST.getlist("users", "")]
-            for user in users:
-                new_group.user_set.add(user)
-            return redirect('main:calendar', pk=request.user.id)
+            new_group.user_set.add(current_user)
+            friends = [User.objects.get(pk=pk) for pk in request.POST.getlist("friends", "")]
+            print(friends)
+            for friend in friends:
+                new_group.user_set.add(friend)
+            print('new_group.user_set.all()',new_group.user_set.all())
+            return redirect('main:calendar')
         return render(request, 'account/group_create.html', {'form': form})
 
 

@@ -6,11 +6,11 @@ User = get_user_model()
 import datetime
 
 COLORS = (
-    ('BLUE', 'blue'),
-    ('PINK', 'pink'),
-    ('RED', 'red'),
-    ('YELLOW', 'yellow'),
-    ('GREEN', 'green'),
+    ('blue', 'blue'),
+    ('pink', 'pink'),
+    ('red', 'red'),
+    ('yellow', 'yellow'),
+    ('green', 'green'),
 )
 
 Group.add_to_class('events', models.ManyToManyField(Event, related_name='events_group'))

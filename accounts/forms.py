@@ -24,11 +24,12 @@ class EditGroupForm(forms.ModelForm):
         model = Group
         fields = ('name', 'color')
 
-    def __init__(self,user, *args, **kwargs):
-        print('user1', user)
+    def __init__(self, *args, **kwargs):
+        self.user = (kwargs.pop('user', None))
+        print('user1', self.user)
         super().__init__(*args, **kwargs)
-        self.fields['friends'].queryset = Friendship.objects.friends_of(user=user)
-        print(Friendship.objects.friends_of(user=user))
+        self.fields['friends'].queryset = Friendship.objects.friends_of(self.user)
+        print(Friendship.objects.friends_of(user=self.user))
 
 
 

@@ -37,7 +37,8 @@ class CalendarView(FormMixin, ListView):
 
     def get_queryset(self):
         user = self.request.user
-        user_groups_qs = Group.objects.filter(user=user)
+        user_groups_qs = user.groups.all()
+        print(user_groups_qs)
         return user_groups_qs
 
     def get_context_data(self, **kwargs):

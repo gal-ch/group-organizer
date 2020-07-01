@@ -21,7 +21,6 @@ class EventForm(ModelForm):
         self.request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         self.fields['group'].queryset = Group.objects.filter(user=self.request.user.pk)
-        self.fields['take_on_event'].widget.attrs['readonly'] = True
 
 
 
