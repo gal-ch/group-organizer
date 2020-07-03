@@ -1,6 +1,8 @@
 <!-- GroupCal/templates/main/calendar.html -->
 {% extends 'base.html' %}
+{% load i18n %}
 {% load get_dict_item %}
+{% load widget_tweaks %}
 {% load static %}
 {% block script %}
 
@@ -47,56 +49,53 @@
 
                 dateClick: function(info) {
                     getElement('id_charge_num').setAttribute("disabled", true);
-                    $('#createEventModal').modal('show');
-                    getElement('id_take_on_event').addEventListener('click', function () {
-                        getElement('id_charge_num').setAttribute("disabled", !this.checked);
+                    getElement('id_take_on_event').addEventListener('change', function () {
+                        if (!this.checked) {
+                            getElement('id_charge_num').setAttribute("disabled", true);
+                        } else {
+                            getElement('id_charge_num').removeAttribute("disabled");
+                        }
+                        console.log(getElement('id_charge_num'))
                     });
+                    $('#createEventModal').modal('show');
                     $('#eventForm').submit(function (e) {
                         e.preventDefault();
-                        let title=$('#id_title').val();
-                        let description=$('#id_description').val();
-                        let date = info.dateStr;
+                        let title = $('#id_title').val();
+                        let description = $('#id_description').val();
                         let to_do = $('#id_take_on_event').prop('checked');
                         let charge_num = $('#id_charge_num').val();
-                        $.ajax({
-                            type: 'POST',
-                            url: '{%  url "main:calendar" %}',
-                            data: {
-                                title: title,
-                                description: description,
-                                current_group: $('#id_group').val(),
-                                start_hour: $('#id_start_hour').val(),
-                                end_hour: $('#id_end_hour').val(),
-                                date: date,
-                                to_do: to_do,
-                                charge_num: charge_num,
-                                csrfmiddlewaretoken: '{{ csrf_token }}',
+                        var data = {
+                            title: title,
+                            description: description,
+                            group_id: $('#id_group').val(),
+                            start_hour: $('#id_start_hour').val(),
+                            end_hour: $('#id_end_hour').val(),
+                            date: info.dateStr,
+                            take_on_event: to_do,
+                            charge_num: charge_num,
+                        };
+                        fetch(`http://127.0.0.1:8000/api/list-event/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}',
                             },
-                            success: function (response) {
+                            body: JSON.stringify(data)
+                        }).then(response => response.json())
+                            .then(data => {
                                 /** event has created
                                  * hide the form window
                                  * add the event to the calendar
                                  ***/
+                                console.log(data);
                                 $('#eventForm')[0].reset();
                                 $('#createEventModal').modal('hide');
-                                let new_event = {
-                                    id: response.instance_id,
-                                    title: title,
-                                    description: description,
-                                    start: response.start_time,
-                                    end: response.end_time,
-                                    extendedProps: {
-                                        to_do: to_do,
-                                        charge_num: charge_num,
-                                    },
-                                };
-                            },
-                            error: function (rs, e) {
-                                console.log(rs.responseText);
-                            }
-                        });
-                    });
+                            }).catch(function (error) {
+                            console.log('ERROR:', error)
+                        })
+                    })
                 },
+
                 eventClick: function(info) {
                     /** event window is open so user can:
                      *  add them self to users in charge list
@@ -115,75 +114,77 @@
                      *  get the users list that in charge to do the event from the serer
                      *  show the list in event window
                      **/
-                    if (info.event.extendedProps.to_do === false) {
+                    console.log(info.event.extendedProps.take_on_event)
+                    if (info.event.extendedProps.take_on_event === false) {
                         console.log('not to do event');
                         update_event_window(info);
                     } else {
-                        fetch(`http://127.0.0.1:8000/api/event-detail/${info.event.id}/`, {
-                            method: 'GET',
-                            headers: {
-                                'Content-type': 'application/json',
-                            },
-                        }).then(response => response.json())
-                            .then(data => {
-                                /** ToDo not sure i need to ajax here -- need to check ssa
-                                 **/
-                                console.log(info);
-                                show_in_charge_users(info);
-                                update_event_window(info);
-                                getElement("eventToDoBtn").addEventListener("click", function () {
-                                    /** event is a to do event and user want to add himself to
-                                     *  the list of users that in charge -->> check with the server:
-                                     *  that the user is not in the list
-                                     *  the list is not full
-                                     *  the event is a to do event (just in case)
-                                     **/
-                                    fetch(`http://127.0.0.1:8000/api/event-update-users/${info.event.id}/`, {
-                                        method: 'PUT',
-                                        headers: {
-                                            'Content-type': 'application/json',
-                                            'X-CSRFToken':'{{ csrf_token }}',
-                                        },
-                                    })
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            console.log(data);
-                                            switch (data) {
-                                                case 0:
-                                                    add_to_in_charge_msg.innerHTML = 'you already in this list';
-                                                    add_to_in_charge_msg.style.display = 'block';
-                                                    break;
-                                                case 1:
-                                                    add_to_in_charge_msg.innerHTML = 'this list is full';
-                                                    add_to_in_charge_msg.style.display = 'block';
-                                                    break;
-                                                case 2:
-                                                    let ul = getElement("eventChargeUsers");
-                                                    let li = document.createElement('li');
-                                                    li.className = "list-group-item";
-                                                    li.appendChild(document.createTextNode('{{ user }}'));
-                                                    ul.appendChild(li);
-                                                    break;
-                                            }});});
-                            });
+                        /** ToDo not sure i need to ajax here -- need to check ssa
+                         **/
+                        console.log(info);
+                        show_in_charge_users(info);
+                        update_event_window(info);
+                        getElement("eventToDoBtn").addEventListener("click", function () {
+                            /** event is a to do event and user want to add himself to
+                             *  the list of users that in charge -->> check with the server:
+                             *  that the user is not in the list
+                             *  the list is not full
+                             *  the event is a to do event (just in case)
+                             **/
+                            fetch(`http://127.0.0.1:8000/api/event-update-users/${info.event.id}/`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-type': 'application/json',
+                                    'X-CSRFToken':'{{ csrf_token }}',
+                                },
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    console.log(data);
+                                    switch (data) {
+                                        case 0:
+                                            add_to_in_charge_msg.innerHTML = 'you already in this list';
+                                            add_to_in_charge_msg.style.display = 'block';
+                                            break;
+                                        case 1:
+                                            add_to_in_charge_msg.innerHTML = 'this list is full';
+                                            add_to_in_charge_msg.style.display = 'block';
+                                            break;
+                                        case 2:
+                                            let ul = getElement("eventChargeUsers");
+                                            let li = document.createElement('li');
+                                            li.className = "list-group-item";
+                                            li.appendChild(document.createTextNode('{{ user }}'));
+                                            ul.appendChild(li);
+                                            break;
+                                    }});
+                        });
+
                     }
                 },
                 eventDrop: function (info) {
-                    $.ajax({
-                        type: 'GET',
-                        url: '{%  url "events:ajax_event_change_date" %}',
-                        data: {
-                            event_id: info.event.id,
-                            new_date_start: info.event.start.toISOString(),
-                            new_date_end: info.event.end.toISOString(),
+                    var data= {
+                        event_id: info.event.id,
+                        start: info.event.start.toISOString(),
+                        end: info.event.end.toISOString(),
+                        title: info.event.title,
+                        description: info.event.extendedProps.description,
+                        take_on_event: info.event.extendedProps.take_on_event,
+                        charge_num: info.event.extendedProps.charge_num,
+                    };
+                    fetch(`http://127.0.0.1:8000/api/event-detail/${info.event.id}/`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-type': 'application/json',
+                            'X-CSRFToken':'{{ csrf_token }}',
                         },
-                        success: function(response) {
-                            console.log(response)
-                        },
-                        error : function(xhr,errmsg,err) {
-                            console.log(xhr.status + ": " + xhr.responseText);
-                        },
-                    });
+                        body: JSON.stringify(data)
+                    }).then(response => response.json())
+                        .then(data => {
+                            console.log(data)
+                        }).catch(function (error) {
+                        console.log('ERROR:', error)
+                    })
                 },
             });
             calendar.render();
@@ -209,6 +210,7 @@
                                 $(data.group_events).each(function () {
                                     events.push({
                                         title: $(this).attr('title'),
+                                        date: $(this).attr('date'),
                                         start: $(this).attr('start'),
                                         end: $(this).attr('end'),
                                         id: $(this).attr('id'),
@@ -216,7 +218,7 @@
                                         color: $(this).attr('color'),
                                         textColor: 'black',
                                         charge_num: $(this).attr('charge_num'),
-                                        to_do: $(this).attr('to_do'),
+                                        take_on_event: $(this).attr('take_on_event'),
                                         user_id: $(this).attr('user_id'),
                                         charge_users: $(this).attr('charge_users'),
                                         backgroundColor: data.color,
@@ -271,10 +273,10 @@
                 getElement("eventDescription").innerHTML = info.event.extendedProps.description.toString();
                 getElement("eventStart").innerHTML = info.event.start;
                 getElement("eventEnd").innerHTML = info.event.end;
-
-                getElement('eventToDoBtn').setAttribute("disabled", info.event.extendedProps.to_do !== true);
-                console.log(info.event.extendedProps.to_do)
-                console.log(getElement('eventToDoBtn'))
+                getElement('eventToDoBtn').setAttribute("disabled", info.event.extendedProps.take_on_event !== true);
+                getElement('eventToDoBtn').removeAttribute("disabled", info.event.extendedProps.take_on_event === true);
+                console.log(info.event.extendedProps.take_on_event);
+                console.log(getElement('eventToDoBtn'));
                 if( parseInt('{{ user.pk }}')  === parseInt(info.event.extendedProps.user_id)){
                     console.log('enter');
                     getElement('UpdateEventBtn').style.display ='inline';
@@ -307,12 +309,46 @@
             }
 
             function update_event_form(info){
+                console.log('update_event_form');
                 getElement("id_title").value = info.event.title;
                 getElement("id_description").value = info.event.extendedProps.description.toString();
-                getElement("id_take_on_event").checked = info.event.extendedProps.to_do;
+                getElement("id_take_on_event").checked = info.event.extendedProps.take_on_event;
                 getElement("id_charge_num").value = info.event.extendedProps.charge_num;
+                {#getElement("id_group").se = info.event.extendedProps.charge_num;#}
                 // ToDo add hours to select
                 $('#createEventModal').modal('show');
+                $('#eventForm').submit(function (e) {
+                    e.preventDefault();
+                    console.log(info);
+                    var data = {
+                        title: getElement("id_title").value,
+                        description:  getElement("id_description").value,
+                        start_hour: getElement("id_start_hour").value,
+                        end_hour: getElement("id_end_hour").value,
+                        date: info.event.date,
+                        take_on_event: getElement("id_take_on_event").checked,
+                        charge_num:  getElement("id_charge_num").value,
+                    };
+                    fetch(`http://127.0.0.1:8000/api/event-detail/${info.event.id}/`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}',
+                        },
+                        body: JSON.stringify(data)
+                    }).then(response => response.json())
+                        .then(data => {
+                            /** event has created
+                             * hide the form window
+                             * add the event to the calendar
+                             ***/
+                            console.log(data);
+                            $('#eventForm')[0].reset();
+                            $('#createEventModal').modal('hide');
+                        }).catch(function (error) {
+                        console.log('ERROR:', error)
+                    })
+                })
             }
 
             function open_users_manager_window() {
@@ -399,7 +435,7 @@
                 .then(data =>
                 {
                     console.log(data);
-                    e.innerHTML = '<i class="fas fa-check-circle"></i>';
+                    e.innerHTML = '<i class="fas fa-check-circle"> </i>';
                     var elem = e.parentNode;
                     var elem_btns = elem.getElementsByTagName('button');
                 }).catch(function (error) {
@@ -407,7 +443,6 @@
             });
         }
     </script>
-
 {% endblock %}
 
 
@@ -421,7 +456,6 @@
                     <i class="far fa-calendar-alt fa-2x"> </i>
                     <i class="fas fa-calendar-check fa-2x"> </i>
                 </div>
-
             </div>
             <ul class="list-unstyled components">
                 <p class="font-weight-bold text-center">hey {{ request.user.username }}</p>
@@ -450,7 +484,6 @@
                         {% endfor %}
                     </div>
                 </li>
-
                 <li>
                     <a href="{% url 'accounts:create-group' %}" class="waves-effect"><i class="fas fa-plus-square mr-2"> </i>create new group</a>
                 </li>
@@ -463,8 +496,14 @@
                     <a  data-toggle="modal" data-target="#friendsRequest"><i class="fas fa-user-check mr-2"> </i>friends request</a>
                 </li>
 
-                <li>
-                    <a href="{% url 'account_logout' %}" class="waves-effect"><i class="fas fa-sign-out-alt mr-2"> </i>logout</a>
+                <li class="d-flex justify-content-center">
+                    <form method="post" action="{% url 'account_logout' %}">
+                        {% csrf_token %}
+                        {% if redirect_field_value %}
+                            <input type="hidden"  class="waves-effect" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
+                        {% endif %}
+                        <button type="submit" class="btn bg-transparent "><i class="fas fa-sign-out-alt"> </i>{% trans 'Sign Out' %}</button>
+                    </form>
                 </li>
 
             </ul>
@@ -482,7 +521,7 @@
             <div class="modal-content">
                 <div class="modal-header">
 
-                    <h4 class="modal-title w-100 font-weight-bold text-center" id="manageUsers"></h4>
+                    <h4 class="modal-title w-100 font-weight-bold text-center" id="manageUsers"> </h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -512,20 +551,20 @@
         <div class="modal-dialog modal-m " role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <p class="modal-title w-100 font-weight-bold text-center" id="eventTitle"></p>
+                    <p class="modal-title w-100 font-weight-bold text-center" id="eventTitle"> </p>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body d-flex flex-column" id="eventContent">
-                    <p class="text-center" id="eventDescription"></p>
-                    <span>start at:<p class="text-center" id="eventStart"></p></span>
-                    <span>end at:<p class="text-center" id="eventEnd"></p></span>
+                    <p class="text-center" id="eventDescription"> </p>
+                    <span>start at:<p class="text-center" id="eventStart"> </p></span>
+                    <span>end at:<p class="text-center" id="eventEnd"> </p></span>
                     <div class="alert alert-success" id="success-alert" style="display:none">
                         <button type="button" class="close" >x</button>
-                        <span class="glyphicon glyphicon-ok"></span>
+                        <span class="glyphicon glyphicon-ok"> </span>
                     </div>
-                    <ul class="list-group list-group-flush" id="eventChargeUsers"></ul>
+                    <ul class="list-group list-group-flush" id="eventChargeUsers"> </ul>
                 </div>
                 <div class="modal-footer justify-content-center">
                     <button id="eventToDoBtn" type="button" class="btn btn-blue-grey">Do it</button>
@@ -540,7 +579,7 @@
 
     <!-- Create Event Form -->
     <div class="modal fade" id="createEventModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
+        <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header text-center">
                     <h4 class="modal-title w-100 font-weight-bold">Add Event</h4>
@@ -548,18 +587,56 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <form method="post" id="eventForm" action="">
-                    <div class="modal-body mx-3">
+                <div class="modal-body">
+                    <form id="eventForm" action="">
                         {% csrf_token %}
-                        {{ form.as_p }}
-                    </div>
-                    <div class="modal-footer d-flex justify-content-center">
-                        <button type="submit" id="submitButton" class="btn btn-unique">Save<i class="fas fa-paper-plane-o ml-1"></i></button>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer d-flex justify-content-center">
-                <button class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
+                        {{ form.non_field_errors }}
+                        <div class="form-group">
+                            <!--title-->
+                            {{ form.title.errors }}
+                            {% render_field form.title  class="form-control" %}
+                        </div>
+                        <div class="form-group">
+                            <!--description -->
+                            {{ form.description.errors }}
+                            {% render_field form.description  class="form-control" %}
+                        </div>
+                        <div class="form-row mb-2">
+                            <div class="form-group col-md-6">
+                                <!--start_hour -->
+                                {{ form.start_hour.errors }}
+                                {% render_field form.start_hour  class="form-control" %}
+                            </div>
+                            <div class="form-group col-md-6">
+                                {{ form.end_hour.errors }}
+                                {% render_field form.end_hour  class="form-control" %}
+                            </div>
+                        </div>
+                        <div class="form-row mb-2">
+                            <div class="form-group col-md-6">
+                                <!-- group-->
+                                {{ form.group.errors }}
+                                {% render_field form.group  class="form-control" %}
+                            </div>
+                            <div class="form-group col-md-2">
+                                <!-- take_on_event -->
+                                <div class="form-check">
+                                    {{ form.take_on_event.errors }}
+                                    {% render_field form.take_on_event  class="form-control" %}
+                                </div>
+                            </div>
+                            <!-- charge users number-->
+                            <div class="form-group col-md-4">
+                                {{ form.charge_num.errors }}
+                                {% render_field form.charge_num  class="form-control" %}
+                            </div>
+                        </div>
+                        <div class="modal-footer d-flex justify-content-center">
+                            <button type="submit" id="submitButton" class="btn btn-unique">Save<i class="fas fa-paper-plane-o ml-1"> </i></button>
+                            <button class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -579,9 +656,8 @@
                 </div>
                 <div class="modal-body">
                     <div class="col-4 col-md-6">
-                        <span><i id="search-icon" class="fas fa-search"></i><input id="user-input" placeholder="Search"></span>
+                        <span><i id="search-icon" class="fas fa-search"> </i><input id="user-input" placeholder="Search"></span>
                     </div>
-
                     <div id="replaceable-content" class="col">
                         {% include 'account/users_search_result.html' %}
                     </div>
@@ -629,9 +705,5 @@
         </div>
     </div>
     <!-- Friends Request Model -->
-
-
-
-
 
 {% endblock %}

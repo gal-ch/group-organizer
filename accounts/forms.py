@@ -14,7 +14,9 @@ def get_permission_from_name(name):
 class EditGroupForm(forms.ModelForm):
     friends = forms.ModelMultipleChoiceField(
         queryset=None,
-        widget=forms.CheckboxSelectMultiple())
+        widget=forms.CheckboxSelectMultiple(),
+        required=False,
+    )
 
     # permissions = forms.TypedMultipleChoiceField(
     #     choices=User._meta.permissions,

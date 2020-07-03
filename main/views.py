@@ -46,8 +46,8 @@ class CalendarView(FormMixin, ListView):
         '''get the event related to current user'''
         user = self.request.user
         context['events'] = [{'group_id': group.pk, 'group_events': [{'id': o.id, 'title': o.title, 'description': o.description,
-                                                                      'start': o.start_time.isoformat(), 'end': o.end_time.isoformat(),
-                                                                      'allDay': True, 'to_do': o.take_on_event, 'charge_num': o.charge_num,
+                                                                      'start': o.start.isoformat(), 'end': o.end.isoformat(),
+                                                                      'allDay': True, 'take_on_event': o.take_on_event, 'charge_num': o.charge_num,
                                                                       'user_id': o.user_id} for o in group.events.all()]} for group in self.get_queryset()]
         context['manger_perm'] = user.has_perm('auth.change_group')
         context['user_friends'] = Friendship.objects.friends_of(user=self.request.user)
@@ -63,46 +63,6 @@ class CalendarView(FormMixin, ListView):
         else:
             print(form.errors)
             return self.form_invalid(form)
-
-    def form_valid(self, form):
-        '''
-        get event data from the client,
-        convert the time
-        save the event to the data base
-        add the event to the selected group
-        send to the client the event id and the converted start and end time of the event
-        '''
-        print('form_valid')
-        current_tz = timezone.get_current_timezone()
-        group_id = self.request.POST.get('current_group')
-        group_obj = Group.objects.get(id=group_id)
-        date_start_string = '{} {}'.format(self.request.POST.get('date'), self.request.POST.get('start_hour'))
-        date_end_string = '{} {}'.format(self.request.POST.get('date'), self.request.POST.get('end_hour'))
-        start_t = datetime.datetime.strptime(date_start_string, "%Y-%m-%d %H:%M:%S")
-        end_t = datetime.datetime.strptime(date_end_string, "%Y-%m-%d %H:%M:%S")
-        start_date = current_tz.localize(start_t)
-        end_date = current_tz.localize(end_t)
-        if form.is_valid():
-            new_event = form.save(commit=False)
-            new_event.user_id = self.request.user.pk
-            new_event.title = self.request.POST.get('title')
-            new_event.description = self.request.POST.get('description')
-            new_event.charge_num = self.request.POST.get('charge_num')
-            new_event.start_time = start_date
-            new_event.end_time = end_date
-            if self.request.POST.get('to_do') == 'true':
-                new_event.take_on_event = True
-            new_event.save()
-            group_obj.events.add(new_event)
-            response = {
-                "instance_id": new_event.id,
-                "start_time": new_event.start_time,
-                "end_time": new_event.end_time,
-            }
-            # send to client side.
-            return JsonResponse(response, status=200)
-        else:
-            return JsonResponse({"error": form.errors}, status=400)
 
 
 def get_charge_users(request):

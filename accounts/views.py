@@ -8,10 +8,8 @@ from django.views.generic import CreateView
 from django.contrib.auth import get_user_model
 from rest_framework import permissions
 from rest_framework.decorators import permission_classes, api_view
-from rest_framework.response import Response
 from accounts.forms import EditGroupForm
 from accounts.models import FriendRequest, Friendship
-from accounts.serializers import FriendshipSerializer, FriendRequestSerializer
 from rest_framework import status
 User = get_user_model()
 
@@ -58,9 +56,11 @@ class GroupCreate(CreateView):
             friends = [User.objects.get(pk=pk) for pk in request.POST.getlist("friends", "")]
             print(friends)
             for friend in friends:
+
                 new_group.user_set.add(friend)
             print('new_group.user_set.all()',new_group.user_set.all())
             return redirect('main:calendar')
+        print(form.errors)
         return render(request, 'account/group_create.html', {'form': form})
 
 
