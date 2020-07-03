@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group
 from django.http import JsonResponse
 from django.utils import timezone
 
-from accounts.models import FriendRequest
+from accounts.models import FriendRequest, Friendship
 from events.forms import EventForm
 from events.models import Event
 from django.contrib.auth import get_user_model
@@ -50,6 +50,7 @@ class CalendarView(FormMixin, ListView):
                                                                       'allDay': True, 'to_do': o.take_on_event, 'charge_num': o.charge_num,
                                                                       'user_id': o.user_id} for o in group.events.all()]} for group in self.get_queryset()]
         context['manger_perm'] = user.has_perm('auth.change_group')
+        context['user_friends'] = Friendship.objects.friends_of(user=self.request.user)
         context['user_friends_request'] = FriendRequest.objects.filter(receiver=user)
         form_class = self.get_form_class()
         context['form'] = self.get_form(form_class)

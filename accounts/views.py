@@ -66,15 +66,13 @@ class GroupCreate(CreateView):
 
 def search_users_view(request):
     url_parameter = request.GET.get("q")
+    user_friends = None
     if url_parameter:
         user_friends = Friendship.objects.friends_of(user=request.user)
-        user_not_friends = User.objects.filter(email__icontains=url_parameter)
-        user_not_friends = (user_not_friends | user_friends).distinct()
-        print(user_not_friends)
-        print(user_friends)
+        user_friends_id_list = Friendship.objects.friends_of(user=request.user).values('id')
+        user_not_friends = User.objects.filter(email__icontains=url_parameter).exclude(id__in=user_friends_id_list).exclude(id=request.user.pk)
     else:
         user_not_friends = User.objects.all()
-        user_friends = None
     if request.is_ajax():
         html = render_to_string(
             template_name="account/users_search_result.html",
@@ -83,6 +81,8 @@ def search_users_view(request):
                 "friends_users": user_friends,
             }
         )
+        print(user_not_friends)
+        print(user_friends)
         data_dict = {"html_from_view": html}
         return JsonResponse(data=data_dict, safe=False)
 

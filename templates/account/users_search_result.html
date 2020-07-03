@@ -3,16 +3,16 @@
     <ul class="list-unstyled container-fluid">
         {% for user in user_not_friends %}
             <li class="row justify-content-between">
-                    <div class="col-md-6" style="background-color: #5b80b2">
+                    <div class="col-4 col-md-6" style="background-color: #5b80b2">
                         <h5>{{ user.email }}</h5>
                     </div>
-                    <div class="col-md-6" style="background-color: #f5dd5d">
+                    <div class="col-4  col-md-6" style="background-color: #f5dd5d">
                         <button class="btn btn-default btn-sm ml-5" value="{{ user.pk }}" id="sendFriendRequest">add friend</button>
                     </div>
             </li>
         {% endfor %}
-        {% elif user_friends %}
-        {% for user in user_friends %}
+        {% elif friends_users %}
+        {% for user in friends_users %}
             <li class="d-flex flex-row">
                 <h5 class="text-align-center">{{ user.email }}</h5></li>
         {% endfor %}
@@ -20,3 +20,7 @@
 {% else %}
     <p>No users found.</p>
 {% endif %}
+
+
+
+

@@ -154,13 +154,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
-STATIC_ROOT = os.path.join(os.path.dirname(BASE_DIR), "GroupCal/static/", "static_root")
+
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
+STATIC_ROOT = os.path.join(os.path.dirname(BASE_DIR), "static_root")
 
-# AUTH_USER_MODEL = 'accounts.User'
 
 LOGIN_REDIRECT_URL = '/calendar'
 LOGIN_URL = '/accounts/login'

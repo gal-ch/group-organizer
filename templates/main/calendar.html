@@ -7,7 +7,7 @@
     <script>
         /** to do:
          * fix event update
-         * delete users fro groups
+         * delete users from groups
          * permissions
          * see event ?
          * delete events
@@ -88,8 +88,6 @@
                                     extendedProps: {
                                         to_do: to_do,
                                         charge_num: charge_num,
-
-
                                     },
                                 };
                             },
@@ -166,9 +164,7 @@
                                                     li.appendChild(document.createTextNode('{{ user }}'));
                                                     ul.appendChild(li);
                                                     break;
-                                            }
-                                        });
-                                });
+                                            }});});
                             });
                     }
                 },
@@ -190,7 +186,6 @@
                     });
                 },
             });
-
             calendar.render();
 
             function getElement(elm){
@@ -233,13 +228,12 @@
                             })
                     },
                 });
-
                 console.log(calendar.getEventSources())
             }
 
 
-
             var groups = document.getElementsByClassName("filterEventsByGroup");
+
             /** add event listener to each group and passing the group id and the group color
              *  if group is checked -- update the calendar with events of this group
              *  if group is unchecked -- remove the group from the calendar events sources
@@ -267,7 +261,6 @@
                 add_to_in_charge_msg.innerHTML = '';
                 add_to_in_charge_msg.style.display = 'none';
                 $('#eventChargeUsers').empty();
-                getElement('eventToDoBtn').style.dis = 'none';
             }
 
             /** replace the content of the event window with the event info that was clicked
@@ -278,8 +271,10 @@
                 getElement("eventDescription").innerHTML = info.event.extendedProps.description.toString();
                 getElement("eventStart").innerHTML = info.event.start;
                 getElement("eventEnd").innerHTML = info.event.end;
-                getElement("eventToDoBtn").disabled = info.event.extendedProps.to_do === "False";
-                console.log(info.event.extendedProps.user_id);
+
+                getElement('eventToDoBtn').setAttribute("disabled", info.event.extendedProps.to_do !== true);
+                console.log(info.event.extendedProps.to_do)
+                console.log(getElement('eventToDoBtn'))
                 if( parseInt('{{ user.pk }}')  === parseInt(info.event.extendedProps.user_id)){
                     console.log('enter');
                     getElement('UpdateEventBtn').style.display ='inline';
@@ -346,7 +341,6 @@
             const endpoint = '/search-users-view/';
             const delay_by_in_ms = 700;
             let scheduled_function = false;
-
             let ajax_call = function (endpoint, request_parameters) {
                 $.getJSON(endpoint, request_parameters)
                     .done(response => {
@@ -412,9 +406,10 @@
                 console.log('ERROR:', error)
             });
         }
-
     </script>
+
 {% endblock %}
+
 
 {% block content %}
     <!-- Sidebar -->
@@ -422,16 +417,17 @@
         <nav id="sidebar">
             <div class="d-flex flex-row justify-content-center pt-5">
                 <div class="sidebar-header">
-                    <i class="fas fa-calendar fa-2x"></i>
-                    <i class="far fa-calendar-alt fa-2x"></i>
-                    <i class="fas fa-calendar-check fa-2x"></i>
+                    <i class="fas fa-calendar fa-2x"> </i>
+                    <i class="far fa-calendar-alt fa-2x"> </i>
+                    <i class="fas fa-calendar-check fa-2x"> </i>
                 </div>
 
             </div>
             <ul class="list-unstyled components">
                 <p class="font-weight-bold text-center">hey {{ request.user.username }}</p>
-                <li class="active"><a href="#groupsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">your groups</a>
-                    <ul class="components list-unstyled" id="groupsSubmenu">
+                <li><a href="#groupsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                    <i class="fas fa-layer-group mr-2"> </i>your groups</a>
+                    <ul class="components list-unstyled collapse" id="groupsSubmenu">
                         {% for group in object_list %}
                             <li> <input type="checkbox" class="filterEventsByGroup" value='{{ group.pk }}'>
                                 <label for="filterEventsByGroup"><a href="#groupCheckBox-{{ group.pk }}" data-toggle="collapse"
@@ -446,21 +442,29 @@
                         {% endfor %}
                     </ul>
                 </li>
-
-                <li>
-                    <a href="{% url 'accounts:create-group' %}" class="waves-effect">create new group</a>
+                <li><a href="#friendsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle friends-list">
+                    <i class="fas fa-user-friends mr-2"> </i>your friends</a>
+                    <div class="components collapse" id="friendsSubmenu">
+                        {% for friends in user_friends %}
+                            <a href="">{{ friends.username }}</a>
+                        {% endfor %}
+                    </div>
                 </li>
 
                 <li>
-                    <a data-toggle="modal" data-target="#addContactsForm">add contacts</a>
+                    <a href="{% url 'accounts:create-group' %}" class="waves-effect"><i class="fas fa-plus-square mr-2"> </i>create new group</a>
                 </li>
 
                 <li>
-                    <a  data-toggle="modal" data-target="#friendsRequest">friends request</a>
+                    <a data-toggle="modal" data-target="#addContactsForm"><i class="fas fa-user-plus mr-2"> </i>add contacts</a>
                 </li>
 
                 <li>
-                    <a href="{% url 'account_logout' %}" class="waves-effect">logout</a>
+                    <a  data-toggle="modal" data-target="#friendsRequest"><i class="fas fa-user-check mr-2"> </i>friends request</a>
+                </li>
+
+                <li>
+                    <a href="{% url 'account_logout' %}" class="waves-effect"><i class="fas fa-sign-out-alt mr-2"> </i>logout</a>
                 </li>
 
             </ul>
@@ -474,7 +478,7 @@
     <!-- Manage users PopUp -->
     <div class="modal fade" id="manageUsersWindow" tabindex="-1" role="dialog" aria-labelledby="manegeUsersModal"
          aria-hidden="true">
-        <div class="modal-dialog modal-m " role="document">
+        <div class="modal-dialog modal-m" role="document">
             <div class="modal-content">
                 <div class="modal-header">
 

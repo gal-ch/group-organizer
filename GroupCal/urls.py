@@ -13,4 +13,7 @@ urlpatterns = [
                   path('accounts/', include('allauth.urls')),
                   url(r'^api-auth/', include('rest_framework.urls')),
                   path('admin/', admin.site.urls),
-              ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+              ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
