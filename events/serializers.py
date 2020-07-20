@@ -1,14 +1,9 @@
-from django.contrib.auth.models import Group
 from rest_framework import serializers
-
-from accounts.models import User
 from events.models import Event
-import datetime
-from django.utils import timezone
+# not using
 
 
 class EventSerializer(serializers.ModelSerializer):
-    # user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), default=serializers.CurrentUserDefault())
 
     class Meta:
         model = Event
@@ -21,8 +16,6 @@ class EventSerializer(serializers.ModelSerializer):
                   'user',
                   'take_on_event',
                   'charge_num',
-                  'charge_users',
-
                   ]
 
     def create(self, validated_data):

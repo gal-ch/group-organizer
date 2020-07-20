@@ -11,435 +11,365 @@
          * fix event update
          * delete users from groups
          * permissions
-         * see event ?
          * delete events
          **/
 
-        document.addEventListener('DOMContentLoaded', function()
-        {
-            function get_calendar_height() {
-                return $(window).height()-50;
-            }
-            let add_to_in_charge_msg = getElement("success-alert");
-            let current_event = null;
-            let calendarEl = getElement('calendar');
-            let calendar = new FullCalendar.Calendar(calendarEl, {
-                plugins: [ 'interaction', 'dayGrid', 'timeGrid' ],
-                defaultView: 'dayGridMonth',
-                editable: true,
-                selectable: true,
-                height: get_calendar_height(),
-                customButtons: {
-                    custom1: {
-                        text: 'menu',
-                        click: function() {
-                            $('#sidebar').toggleClass('active');
+        document.addEventListener('DOMContentLoaded', function () {
+                function get_calendar_height() {
+                    return $(window).height() - 50;
+                }
+                let add_to_in_charge_msg = getElement("success-alert");
+                let calendarEl = getElement('calendar');
+                let calendar = new FullCalendar.Calendar(calendarEl, {
+                    plugins: ['interaction', 'dayGrid', 'timeGrid'],
+                    defaultView: 'dayGridMonth',
+                    editable: true,
+                    selectable: true,
+                    height: get_calendar_height(),
+                    customButtons: {
+                        custom1: {
+                            text: 'menu',
+                            click: function () {
+                                $('#sidebar').toggleClass('active');
+                            }
                         }
-                    }
-                },
-                header: {
-                    left: 'custom1 prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay',
-                },
-                eventSources: [],
-                windowResize:  function(view) {
-                    calendar.setOption('height', get_calendar_height());
-                },
-
-                dateClick: function(info) {
-                    getElement('id_charge_num').setAttribute("disabled", true);
-                    getElement('id_take_on_event').addEventListener('change', function () {
-                        if (!this.checked) {
-                            getElement('id_charge_num').setAttribute("disabled", true);
-                        } else {
-                            getElement('id_charge_num').removeAttribute("disabled");
-                        }
-                        console.log(getElement('id_charge_num'))
-                    });
-                    $('#createEventModal').modal('show');
-                    $('#eventForm').submit(function (e) {
-                        e.preventDefault();
-                        let title = $('#id_title').val();
-                        let description = $('#id_description').val();
-                        let to_do = $('#id_take_on_event').prop('checked');
-                        let charge_num = $('#id_charge_num').val();
-                        var data = {
-                            title: title,
-                            description: description,
-                            group_id: $('#id_group').val(),
-                            start_hour: $('#id_start_hour').val(),
-                            end_hour: $('#id_end_hour').val(),
-                            date: info.dateStr,
-                            take_on_event: to_do,
-                            charge_num: charge_num,
-                        };
-                        fetch(`http://127.0.0.1:8000/api/list-event/`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-type': 'application/json',
-                                'X-CSRFToken': '{{ csrf_token }}',
-                            },
-                            body: JSON.stringify(data)
-                        }).then(response => response.json())
-                            .then(data => {
-                                /** event has created
-                                 * hide the form window
-                                 * add the event to the calendar
-                                 ***/
-                                console.log(data);
-                                $('#eventForm')[0].reset();
-                                $('#createEventModal').modal('hide');
-                            }).catch(function (error) {
-                            console.log('ERROR:', error)
-                        })
-                    })
-                },
-
-                eventClick: function(info) {
-                    /** event window is open so user can:
-                     *  add them self to users in charge list
-                     *  update the event (if they created it -- verify in update_event_window(info))
-                     **/
-                    info.jsEvent.preventDefault();
-                    clear_event_data();
-                    current_event = info;
-                    /** fetch the event data from the server and display the info according to it type (to do or not to do)
-                     *  check if someone need to do the event:
-                     *  info.event.extendedProps.to_do === 'False':
-                     *  dont show the list of users that in charge to do the event
-                     *
-                     *  info.event.extendedProps.to_do === 'True':
-                     *  send the event id to the server
-                     *  get the users list that in charge to do the event from the serer
-                     *  show the list in event window
-                     **/
-                    console.log(info.event.extendedProps.take_on_event)
-                    if (info.event.extendedProps.take_on_event === false) {
-                        console.log('not to do event');
-                        update_event_window(info);
-                    } else {
-                        /** ToDo not sure i need to ajax here -- need to check ssa
-                         **/
-                        console.log(info);
-                        show_in_charge_users(info);
-                        update_event_window(info);
-                        getElement("eventToDoBtn").addEventListener("click", function () {
-                            /** event is a to do event and user want to add himself to
-                             *  the list of users that in charge -->> check with the server:
-                             *  that the user is not in the list
-                             *  the list is not full
-                             *  the event is a to do event (just in case)
-                             **/
-                            fetch(`http://127.0.0.1:8000/api/event-update-users/${info.event.id}/`, {
-                                method: 'PUT',
-                                headers: {
-                                    'Content-type': 'application/json',
-                                    'X-CSRFToken':'{{ csrf_token }}',
-                                },
-                            })
-                                .then(response => response.json())
-                                .then(data => {
-                                    console.log(data);
-                                    switch (data) {
-                                        case 0:
-                                            add_to_in_charge_msg.innerHTML = 'you already in this list';
-                                            add_to_in_charge_msg.style.display = 'block';
-                                            break;
-                                        case 1:
-                                            add_to_in_charge_msg.innerHTML = 'this list is full';
-                                            add_to_in_charge_msg.style.display = 'block';
-                                            break;
-                                        case 2:
-                                            let ul = getElement("eventChargeUsers");
-                                            let li = document.createElement('li');
-                                            li.className = "list-group-item";
-                                            li.appendChild(document.createTextNode('{{ user }}'));
-                                            ul.appendChild(li);
-                                            break;
-                                    }});
-                        });
-
-                    }
-                },
-                eventDrop: function (info) {
-                    var data= {
-                        event_id: info.event.id,
-                        start: info.event.start.toISOString(),
-                        end: info.event.end.toISOString(),
-                        title: info.event.title,
-                        description: info.event.extendedProps.description,
-                        take_on_event: info.event.extendedProps.take_on_event,
-                        charge_num: info.event.extendedProps.charge_num,
-                    };
-                    fetch(`http://127.0.0.1:8000/api/event-detail/${info.event.id}/`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-type': 'application/json',
-                            'X-CSRFToken':'{{ csrf_token }}',
-                        },
-                        body: JSON.stringify(data)
-                    }).then(response => response.json())
-                        .then(data => {
-                            console.log(data)
-                        }).catch(function (error) {
-                        console.log('ERROR:', error)
-                    })
-                },
-            });
-            calendar.render();
-
-            function getElement(elm){
-                return document.getElementById(elm);
-            }
-
-            function get_event_from_source(group_id) {
-                calendar.addEventSource({
-                    id: group_id,
-                    events: function (info, successCallback, failureCallback) {
-                        var url = `http://127.0.0.1:8000/api/update-event-source/${group_id}/`;
-                        fetch(url, {
-                            method: 'GET',
-                            headers: {
-                                'Content-type': 'application/json',
-                            },
-                        }).then(response => response.json())
-                            .then(data => {
-                                var events = [];
-                                console.log(data.group_events);
-                                $(data.group_events).each(function () {
-                                    events.push({
-                                        title: $(this).attr('title'),
-                                        date: $(this).attr('date'),
-                                        start: $(this).attr('start'),
-                                        end: $(this).attr('end'),
-                                        id: $(this).attr('id'),
-                                        description: $(this).attr('description'),
-                                        color: $(this).attr('color'),
-                                        textColor: 'black',
-                                        charge_num: $(this).attr('charge_num'),
-                                        take_on_event: $(this).attr('take_on_event'),
-                                        user_id: $(this).attr('user_id'),
-                                        charge_users: $(this).attr('charge_users'),
-                                        backgroundColor: data.color,
-                                        borderColor: data.color,
-                                    })
-                                });
-                                successCallback(events);
-                                console.log(calendar.getEventSources())
-                            })
                     },
-                });
-                console.log(calendar.getEventSources())
-            }
+                    header: {
+                        left: 'custom1 prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay',
+                    },
+                    eventSources: [],
+                    windowResize: function (view) {
+                        calendar.setOption('height', get_calendar_height());
+                    },
 
+                    dateClick: function (info) {
+                        getElement('id_charge_num').setAttribute("disabled", true);
+                        getElement('id_take_on_event').addEventListener('change', function () {
+                            if (!this.checked) {
+                                getElement('id_charge_num').setAttribute("disabled", true);
+                            } else {
+                                getElement('id_charge_num').removeAttribute("disabled");
+                            }
+                        });
+                        $('#createEventModal').modal('show');
+                        $('#eventForm').submit(function (e) {
+                            e.preventDefault();
+                            $.ajax({
+                                type: 'POST',
+                                url: '{%  url "main:calendar" %}',
+                                data: {
+                                    title: $('#id_title').val(),
+                                    description: $('#id_description').val(),
+                                    current_group: $('#id_group').val(),
+                                    start_hour: $('#id_start_hour').val(),
+                                    end_hour: $('#id_end_hour').val(),
+                                    date: info.dateStr,
+                                    to_do: $('#id_take_on_event').prop('checked'),
+                                    charge_num: $('#id_charge_num').val(),
+                                    csrfmiddlewaretoken: '{{ csrf_token }}',
+                                },
+                                success: function (response) {
+                                    /** event has created
+                                     * hide the form window
+                                     * add the event to the calendar
+                                     ***/
+                                    console.log(response);
+                                    $('#eventForm')[0].reset();
+                                    $('#createEventModal').modal('hide');
+                                },
+                                error: function (rs, e) {
+                                    console.log(rs.responseText);
+                                }
+                            });
+                        });
+                    },
 
-            var groups = document.getElementsByClassName("filterEventsByGroup");
-
-            /** add event listener to each group and passing the group id and the group color
-             *  if group is checked -- update the calendar with events of this group
-             *  if group is unchecked -- remove the group from the calendar events sources
-             **/
-
-            for(let i=0;i < groups.length; i++) {
-                groups[i].addEventListener("change", function() {
-                    console.log(typeof(this.value));
-                    if (this.checked === true) {
-                        console.log('group checkedbox value', parseInt(this.value[0]))
-                        get_event_from_source(parseInt(this.value));
-                    }
-                    else {
-                        console.log(calendar.getEventSourceById(parseInt(this.value)))
-                        calendar.getEventSourceById(parseInt(this.value)).remove();
-                    }
-                });
-            }
-
-            function clear_event_data() {
-                getElement('eventTitle').innerHTML = '';
-                getElement('eventDescription').innerHTML = '';
-                getElement('eventStart').innerHTML = '';
-                getElement('eventEnd').innerHTML = '';
-                add_to_in_charge_msg.innerHTML = '';
-                add_to_in_charge_msg.style.display = 'none';
-                $('#eventChargeUsers').empty();
-            }
-
-            /** replace the content of the event window with the event info that was clicked
-             **/
-            function update_event_window(info){
-                var login_user_id = {{ user.pk }};
-                getElement("eventTitle").innerHTML = info.event.title;
-                getElement("eventDescription").innerHTML = info.event.extendedProps.description.toString();
-                getElement("eventStart").innerHTML = info.event.start;
-                getElement("eventEnd").innerHTML = info.event.end;
-                getElement('eventToDoBtn').setAttribute("disabled", info.event.extendedProps.take_on_event !== true);
-                getElement('eventToDoBtn').removeAttribute("disabled", info.event.extendedProps.take_on_event === true);
-                console.log(info.event.extendedProps.take_on_event);
-                console.log(getElement('eventToDoBtn'));
-                if( parseInt('{{ user.pk }}')  === parseInt(info.event.extendedProps.user_id)){
-                    console.log('enter');
-                    getElement('UpdateEventBtn').style.display ='inline';
-                    getElement('UpdateEventBtn').addEventListener("click", function () {
-                        $('#eventDetails').modal('hide');
-                        update_event_form(info);
-                    });
-                }
-                else{
-                    getElement('UpdateEventBtn').style.display ='none';
-                }
-                $('#eventDetails').modal('show');
-            }
-
-            /** in case the event is a to do event - we need to update the list of user that in charge
-             *  if the user is in the list a undo button will be display instead of the to it button
-             **/
-            function show_in_charge_users(info) {
-                var users_list = info.event.extendedProps.charge_users;
-                var list_ul = getElement("eventChargeUsers");
-                getElement('eventToDoBtn').removeAttribute('disabled');
-                list_ul.innerHTML = 'How is in charge?';
-                for (let i = 0; i < users_list.length; i++){
-                    var name = users_list[i];
-                    var item = document.createElement('li');
-                    item.className ="list-group-item";
-                    item.appendChild(document.createTextNode(name));
-                    list_ul.appendChild(item);
-                }
-            }
-
-            function update_event_form(info){
-                console.log('update_event_form');
-                getElement("id_title").value = info.event.title;
-                getElement("id_description").value = info.event.extendedProps.description.toString();
-                getElement("id_take_on_event").checked = info.event.extendedProps.take_on_event;
-                getElement("id_charge_num").value = info.event.extendedProps.charge_num;
-                {#getElement("id_group").se = info.event.extendedProps.charge_num;#}
-                // ToDo add hours to select
-                $('#createEventModal').modal('show');
-                $('#eventForm').submit(function (e) {
-                    e.preventDefault();
-                    console.log(info);
-                    var data = {
-                        title: getElement("id_title").value,
-                        description:  getElement("id_description").value,
-                        start_hour: getElement("id_start_hour").value,
-                        end_hour: getElement("id_end_hour").value,
-                        date: info.event.date,
-                        take_on_event: getElement("id_take_on_event").checked,
-                        charge_num:  getElement("id_charge_num").value,
-                    };
-                    fetch(`http://127.0.0.1:8000/api/event-detail/${info.event.id}/`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}',
-                        },
-                        body: JSON.stringify(data)
-                    }).then(response => response.json())
-                        .then(data => {
-                            /** event has created
-                             * hide the form window
-                             * add the event to the calendar
-                             ***/
-                            console.log(data);
-                            $('#eventForm')[0].reset();
-                            $('#createEventModal').modal('hide');
-                        }).catch(function (error) {
-                        console.log('ERROR:', error)
-                    })
-                })
-            }
-
-            function open_users_manager_window() {
-                $('#manageUsersWindow').modal('show');
-                let user_pk = 1;
-                document.getElementById('DeleteUsersBtn').addEventListener('click', function () {
-                    var url = `http://127.0.0.1:8000/event-detail/${user_pk}/`;
-                    fetch(url, {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}',
-                        },
-                    }).then(response => response.json())
-                        .then(data => {
-                            console.log(data.id);
-                        }).catch(function (error) {
-                        console.log('ERROR:', error)
-                    });
-
-                });
-            }
-
-            const user_input = $("#user-input");
-            const users_div = $('#replaceable-content');
-            const endpoint = '/search-users-view/';
-            const delay_by_in_ms = 700;
-            let scheduled_function = false;
-            let ajax_call = function (endpoint, request_parameters) {
-                $.getJSON(endpoint, request_parameters)
-                    .done(response => {
-                        // fade out the artists_div, then:
-                        users_div.fadeTo('slow', 0).promise().then(() => {
-                            // replace the HTML contents
-                            users_div.html(response['html_from_view']);
-                            // fade-in the div with new contents
-                            users_div.fadeTo('slow', 1);
-                            document.getElementById('sendFriendRequest').addEventListener('click', function () {
-                                var data = {'receiver_id':this.value,};
-                                fetch('http://127.0.0.1:8000/api/send-friend-request/', {
-                                    method: 'POST',
+                    eventClick: function (info) {
+                        /** event window is open so user can:
+                         *  add them self to users in charge list
+                         *  update the event (if they created it -- verify in update_event_window(info))
+                         **/
+                        info.jsEvent.preventDefault();
+                        clear_event_data();
+                        /** fetch the event data from the server and display the info according to it type (to do or not to do)
+                         *  check if someone need to do the event:
+                         *  info.event.extendedProps.to_do === 'False' => dont show the list of users that in charge to do the event
+                         *
+                         *  info.event.extendedProps.to_do === 'True' =>
+                         *  send the event id to the server
+                         *  get the users list that in charge to do the event from the serer
+                         *  show the list in event window
+                         **/
+                        if (info.event.extendedProps.take_on_event === false) {
+                            console.log('not to do event');
+                            update_event_window(info);
+                        } else {
+                            show_in_charge_users(info);
+                            update_event_window(info);
+                            getElement("eventToDoBtn").addEventListener("click", function () {
+                                /** event is a to do event and user want to add himself to
+                                 *  the list of users that in charge -->> check with the server:
+                                 *  that the user is not in the list
+                                 *  the list is not full
+                                 *  the event is a to do event (just in case)
+                                 **/
+                                fetch(`http://127.0.0.1:8000/api/event-update-users/${info.event.id}/`, {
+                                    method: 'PUT',
                                     headers: {
-                                        'Accept': 'application/json, text/plain, */*',
                                         'Content-type': 'application/json',
-                                        'X-CSRFToken':'{{ csrf_token }}',
+                                        'X-CSRFToken': '{{ csrf_token }}',
                                     },
-                                    body: JSON.stringify(data)
-                                }).then(response => response.json())
+                                })
+                                    .then(response => response.json())
                                     .then(data => {
                                         console.log(data);
-                                        // return massege to user -->> to do
-                                    }).catch(function (error) {
-                                    console.log('ERROR:', error)
-                                });
+                                        switch (data) {
+                                            case 0:
+                                                add_to_in_charge_msg.innerHTML = 'you already in this list';
+                                                add_to_in_charge_msg.style.display = 'block';
+                                                break;
+                                            case 1:
+                                                add_to_in_charge_msg.innerHTML = 'this list is full';
+                                                add_to_in_charge_msg.style.display = 'block';
+                                                break;
+                                            case 2:
+                                                let ul = getElement("eventChargeUsers");
+                                                let li = document.createElement('li');
+                                                li.className = "list-group-item";
+                                                li.appendChild(document.createTextNode('{{ user }}'));
+                                                ul.appendChild(li);
+                                                break;
+                                        }
+                                    });
+                            });
+                        }
+                    },
+                    eventDrop: function (info) {
+                        $.ajax({
+                            type: 'POST',
+                            url: '{%  url "events:ajax_event_change_date" %}',
+                            data: {
+                                event_id: info.event.id,
+                                new_start: info.event.start.toISOString(),
+                                new_end: info.event.end.toISOString(),
+                                new_date: info.event.start.toISOString().slice(0, 10),
+                                csrfmiddlewaretoken: '{{ csrf_token }}',
+                            },
+                            success: function (response) {
+                                console.log(response)
+                            },
+                            error: function (xhr, errmsg, err) {
+                                console.log(xhr.status + ": " + xhr.responseText);
+                            },
+                        });
+                    },
+                });
+
+                calendar.render();
+
+                function getElement(elm) {
+                    return document.getElementById(elm);
+                }
+
+                /** render the checked group events **/
+                function get_event_from_source(group_id) {
+                    calendar.addEventSource({
+                        id: group_id,
+                        events: function (info, successCallback, failureCallback) {
+                            let url = `http://127.0.0.1:8000/api/update-event-source/${group_id}/`;
+                            fetch(url, {
+                                method: 'GET',
+                                headers: {
+                                    'Content-type': 'application/json',
+                                },
+                            }).then(response => response.json())
+                                .then(data => {
+                                    let events = [];
+                                    console.log(data.group_events);
+                                    $(data.group_events).each(function () {
+                                        events.push({
+                                            title: $(this).attr('title'),
+                                            date: $(this).attr('date'),
+                                            start: $(this).attr('start'),
+                                            end: $(this).attr('end'),
+                                            id: $(this).attr('id'),
+                                            description: $(this).attr('description'),
+                                            color: $(this).attr('color'),
+                                            textColor: 'black',
+                                            charge_num: $(this).attr('charge_num'),
+                                            take_on_event: $(this).attr('take_on_event'),
+                                            user_id: $(this).attr('user_id'),
+                                            charge_users: $(this).attr('charge_users'),
+                                            backgroundColor: data.color,
+                                            borderColor: data.color,
+                                        })
+                                    });
+                                    successCallback(events);
+                                    console.log(calendar.getEventSources())
+                                })
+                        },
+                    });
+                    console.log(calendar.getEventSources())
+                }
+
+                let groups = document.getElementsByClassName("filterEventsByGroup");
+                /** add event listener to each group and passing the group id and the group color
+                 *  if group is checked -- update the calendar with events of this group
+                 *  if group is unchecked -- remove the group from the calendar events sources
+                 **/
+                for (let i = 0; i < groups.length; i++) {
+                    groups[i].addEventListener("change", function () {
+                        if (this.checked === true) {
+                            get_event_from_source(parseInt(this.value));
+                        } else {
+                            calendar.getEventSourceById(parseInt(this.value)).remove();
+                        }
+                    });
+                }
+
+                /** clear the data from the event detail window **/
+                function clear_event_data() {
+                    getElement('eventTitle').innerHTML = '';
+                    getElement('eventDescription').innerHTML = '';
+                    getElement('eventStart').innerHTML = '';
+                    getElement('eventEnd').innerHTML = '';
+                    add_to_in_charge_msg.innerHTML = '';
+                    add_to_in_charge_msg.style.display = 'none';
+                    $('#eventChargeUsers').empty();
+                }
+
+                /** replace the content of the event window with the event info that was clicked
+                 **/
+                function update_event_window(info) {
+                    getElement("eventTitle").innerHTML = info.event.title;
+                    getElement("eventDescription").innerHTML = info.event.extendedProps.description.toString();
+                    getElement("eventStart").innerHTML = info.event.start;
+                    getElement("eventEnd").innerHTML = info.event.end;
+                    getElement('eventToDoBtn').setAttribute("disabled", info.event.extendedProps.take_on_event !== true);
+                    getElement('eventToDoBtn').removeAttribute("disabled", info.event.extendedProps.take_on_event === true);
+                    if (parseInt('{{ user.pk }}') === parseInt(info.event.extendedProps.user_id)) {
+                        getElement('UpdateEventBtn').style.display = 'inline';
+                        getElement('UpdateEventBtn').addEventListener("click", function () {
+                            $('#eventDetails').modal('hide');
+                            update_event_form(info);
+                        });
+                    } else {
+                        getElement('UpdateEventBtn').style.display = 'none';
+                    }
+                    $('#eventDetails').modal('show');
+                }
+
+                /** in case the event is a to do event - we need to update the list of user that in charge
+                 *  if the user is in the list a undo button will be display instead of the to it button
+                 **/
+                function show_in_charge_users(info) {
+                    let users_list = info.event.extendedProps.charge_users;
+                    let list_ul = getElement("eventChargeUsers");
+                    getElement('eventToDoBtn').removeAttribute('disabled');
+                    list_ul.innerHTML = 'How is in charge?';
+                    for (let i = 0; i < users_list.length; i++) {
+                        let name = users_list[i];
+                        let item = document.createElement('li');
+                        item.className = "list-group-item";
+                        item.appendChild(document.createTextNode(name));
+                        list_ul.appendChild(item);
+                    }
+                }
+
+                function update_event_form(info) {
+                    getElement("id_title").value = info.event.title;
+                    getElement("id_description").value = info.event.extendedProps.description.toString();
+                    getElement("id_take_on_event").checked = info.event.extendedProps.take_on_event;
+                    getElement("id_charge_num").value = info.event.extendedProps.charge_num;
+                    // ToDo add hours to select
+                    $('#createEventModal').modal('show');
+                }
+
+                /** search users and send friend request */
+                const user_input = $("#user-input");
+                const users_div = $('#replaceable-content');
+                const endpoint = '/search-users-view/';
+                const delay_by_in_ms = 700;
+                let scheduled_function = false;
+                let ajax_call = function (endpoint, request_parameters) {
+                    $.getJSON(endpoint, request_parameters)
+                        .done(response => {
+                            users_div.fadeTo('slow', 0).promise().then(() => {
+                                users_div.html(response['html_from_view']);
+                                users_div.fadeTo('slow', 1);
+                                document.getElementById('sendFriendRequest').addEventListener('click', function () {
+                                    var data = {'receiver_id': this.value,};
+                                    fetch('http://127.0.0.1:8000/api/send-friend-request/', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Accept': 'application/json, text/plain, */*',
+                                            'Content-type': 'application/json',
+                                            'X-CSRFToken': '{{ csrf_token }}',
+                                        },
+                                        body: JSON.stringify(data)
+                                    }).then(response => response.json())
+                                        .then(data => {
+                                            console.log(data);
+                                            // return message to user -->> to do
+                                        }).catch(function (error) {
+                                        console.log('ERROR:', error)
+                                    });
+                                })
                             })
                         })
-                    })
-            };
-            user_input.on('keyup', function () {
-                const request_parameters = {
-                    q: $(this).val() // value of user_input: the HTML element with ID user-input
                 };
-                // if scheduled_function is NOT false, cancel the execution of the function
-                if (scheduled_function) {
-                    clearTimeout(scheduled_function)
-                }
-                scheduled_function = setTimeout(ajax_call, delay_by_in_ms, endpoint, request_parameters)
-            });
-
-        });
+                user_input.on('keyup', function () {
+                    const request_parameters = {
+                        q: $(this).val()
+                    };
+                    if (scheduled_function) {
+                        clearTimeout(scheduled_function)
+                    }
+                    scheduled_function = setTimeout(ajax_call, delay_by_in_ms, endpoint, request_parameters)
+                });
+            }
+        );
 
         function response_to_friend_request(e, response) {
-            var data = {
+            let data = {
                 'response': response,
             };
             fetch(`http://127.0.0.1:8000/api/response-to-friend-request/${e.value}/`, {
                 method: 'POST',
                 headers: {
                     'Content-type': 'application/json',
-                    'X-CSRFToken':'{{ csrf_token }}',
+                    'X-CSRFToken': '{{ csrf_token }}',
                 },
                 body: JSON.stringify(data)
             }).then(response => response.json())
-                .then(data =>
-                {
+                .then(data => {
                     console.log(data);
                     e.innerHTML = '<i class="fas fa-check-circle"> </i>';
-                    var elem = e.parentNode;
-                    var elem_btns = elem.getElementsByTagName('button');
                 }).catch(function (error) {
                 console.log('ERROR:', error)
+            });
+        }
+
+        function open_users_manager_window() {
+            $('#manageUsersWindow').modal('show');
+            let user_pk = 1;
+            document.getElementById('DeleteUsersBtn').addEventListener('click', function () {
+                let url = `http://127.0.0.1:8000/event-detail/${user_pk}/`;
+                fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                }).then(response => response.json())
+                    .then(data => {
+                        console.log(data.id);
+                    }).catch(function (error) {
+                    console.log('ERROR:', error)
+                });
+
             });
         }
     </script>
@@ -463,9 +393,11 @@
                     <i class="fas fa-layer-group mr-2"> </i>your groups</a>
                     <ul class="components list-unstyled collapse" id="groupsSubmenu">
                         {% for group in object_list %}
-                            <li> <input type="checkbox" class="filterEventsByGroup" value='{{ group.pk }}'>
-                                <label for="filterEventsByGroup"><a href="#groupCheckBox-{{ group.pk }}" data-toggle="collapse"
-                                                                    class="dropdown-toggle group-dropdown" aria-expanded="false" id="group-dropdown">
+                            <li><input type="checkbox" class="filterEventsByGroup" value='{{ group.pk }}'>
+                                <label for="filterEventsByGroup"><a href="#groupCheckBox-{{ group.pk }}"
+                                                                    data-toggle="collapse"
+                                                                    class="dropdown-toggle group-dropdown"
+                                                                    aria-expanded="false" id="group-dropdown">
                                     {{ group.name }}</a></label>
                                 <div class="collapse" id="groupCheckBox-{{ group.pk }}">
                                     {% for user in group.user_set.all %}
@@ -476,7 +408,8 @@
                         {% endfor %}
                     </ul>
                 </li>
-                <li><a href="#friendsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle friends-list">
+                <li><a href="#friendsSubmenu" data-toggle="collapse" aria-expanded="false"
+                       class="dropdown-toggle friends-list">
                     <i class="fas fa-user-friends mr-2"> </i>your friends</a>
                     <div class="components collapse" id="friendsSubmenu">
                         {% for friends in user_friends %}
@@ -485,24 +418,29 @@
                     </div>
                 </li>
                 <li>
-                    <a href="{% url 'accounts:create-group' %}" class="waves-effect"><i class="fas fa-plus-square mr-2"> </i>create new group</a>
+                    <a href="{% url 'accounts:create-group' %}" class="waves-effect"><i
+                            class="fas fa-plus-square mr-2"> </i>create new group</a>
                 </li>
 
                 <li>
-                    <a data-toggle="modal" data-target="#addContactsForm"><i class="fas fa-user-plus mr-2"> </i>add contacts</a>
+                    <a data-toggle="modal" data-target="#addContactsForm"><i class="fas fa-user-plus mr-2"> </i>add
+                        contacts</a>
                 </li>
 
                 <li>
-                    <a  data-toggle="modal" data-target="#friendsRequest"><i class="fas fa-user-check mr-2"> </i>friends request</a>
+                    <a data-toggle="modal" data-target="#friendsRequest"><i class="fas fa-user-check mr-2"> </i>friends
+                        request</a>
                 </li>
 
                 <li class="d-flex justify-content-center">
                     <form method="post" action="{% url 'account_logout' %}">
                         {% csrf_token %}
                         {% if redirect_field_value %}
-                            <input type="hidden"  class="waves-effect" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
+                            <input type="hidden" class="waves-effect" name="{{ redirect_field_name }}"
+                                   value="{{ redirect_field_value }}"/>
                         {% endif %}
-                        <button type="submit" class="btn bg-transparent "><i class="fas fa-sign-out-alt"> </i>{% trans 'Sign Out' %}</button>
+                        <button type="submit" class="btn bg-transparent "><i
+                                class="fas fa-sign-out-alt"> </i>{% trans 'Sign Out' %}</button>
                     </form>
                 </li>
 
@@ -521,7 +459,7 @@
             <div class="modal-content">
                 <div class="modal-header">
 
-                    <h4 class="modal-title w-100 font-weight-bold text-center" id="manageUsers"> </h4>
+                    <h4 class="modal-title w-100 font-weight-bold text-center" id="manageUsers"></h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -536,7 +474,8 @@
                     <button type="button" class="btn btn-secondary btn-sm" id="DeleteUsersBtn">Delete users</button>
                 </div>
                 <div class="modal-footer justify-content-center">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="closeEventWindow'">Close</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="closeEventWindow'">Close
+                    </button>
                     <button type="button" class="btn btn-primary" id="addUsersToGroup">add users</button>
                 </div>
             </div>
@@ -551,24 +490,25 @@
         <div class="modal-dialog modal-m " role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <p class="modal-title w-100 font-weight-bold text-center" id="eventTitle"> </p>
+                    <p class="modal-title w-100 font-weight-bold text-center" id="eventTitle"></p>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body d-flex flex-column" id="eventContent">
-                    <p class="text-center" id="eventDescription"> </p>
+                    <p class="text-center" id="eventDescription"></p>
                     <span>start at:<p class="text-center" id="eventStart"> </p></span>
                     <span>end at:<p class="text-center" id="eventEnd"> </p></span>
                     <div class="alert alert-success" id="success-alert" style="display:none">
-                        <button type="button" class="close" >x</button>
+                        <button type="button" class="close">x</button>
                         <span class="glyphicon glyphicon-ok"> </span>
                     </div>
-                    <ul class="list-group list-group-flush" id="eventChargeUsers"> </ul>
+                    <ul class="list-group list-group-flush" id="eventChargeUsers"></ul>
                 </div>
                 <div class="modal-footer justify-content-center">
                     <button id="eventToDoBtn" type="button" class="btn btn-blue-grey">Do it</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="closeEventWindow'">Close</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" id="closeEventWindow'">Close
+                    </button>
                     <button type="button" class="btn btn-primary" id="UpdateEventBtn">Update Event</button>
                 </div>
             </div>
@@ -576,10 +516,10 @@
     </div>
     <!-- Event Detail PopUp -->
 
-
     <!-- Create Event Form -->
-    <div class="modal fade" id="createEventModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fade" id="createEventModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header text-center">
                     <h4 class="modal-title w-100 font-weight-bold">Add Event</h4>
@@ -587,61 +527,23 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body">
-                    <form id="eventForm" action="">
+                <form method="post" id="eventForm" action="">
+                    <div class="modal-body mx-3">
                         {% csrf_token %}
-                        {{ form.non_field_errors }}
-                        <div class="form-group">
-                            <!--title-->
-                            {{ form.title.errors }}
-                            {% render_field form.title  class="form-control" %}
-                        </div>
-                        <div class="form-group">
-                            <!--description -->
-                            {{ form.description.errors }}
-                            {% render_field form.description  class="form-control" %}
-                        </div>
-                        <div class="form-row mb-2">
-                            <div class="form-group col-md-6">
-                                <!--start_hour -->
-                                {{ form.start_hour.errors }}
-                                {% render_field form.start_hour  class="form-control" %}
-                            </div>
-                            <div class="form-group col-md-6">
-                                {{ form.end_hour.errors }}
-                                {% render_field form.end_hour  class="form-control" %}
-                            </div>
-                        </div>
-                        <div class="form-row mb-2">
-                            <div class="form-group col-md-6">
-                                <!-- group-->
-                                {{ form.group.errors }}
-                                {% render_field form.group  class="form-control" %}
-                            </div>
-                            <div class="form-group col-md-2">
-                                <!-- take_on_event -->
-                                <div class="form-check">
-                                    {{ form.take_on_event.errors }}
-                                    {% render_field form.take_on_event  class="form-control" %}
-                                </div>
-                            </div>
-                            <!-- charge users number-->
-                            <div class="form-group col-md-4">
-                                {{ form.charge_num.errors }}
-                                {% render_field form.charge_num  class="form-control" %}
-                            </div>
-                        </div>
-                        <div class="modal-footer d-flex justify-content-center">
-                            <button type="submit" id="submitButton" class="btn btn-unique">Save<i class="fas fa-paper-plane-o ml-1"> </i></button>
-                            <button class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
-                        </div>
-                    </form>
-                </div>
+                        {{ form.as_p }}
+                    </div>
+                    <div class="modal-footer d-flex justify-content-center">
+                        <button type="submit" id="submitButton" class="btn btn-unique">Save<i
+                                class="fas fa-paper-plane-o ml-1"> </i></button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer d-flex justify-content-center">
+                <button class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
             </div>
         </div>
     </div>
     <!-- Create Event Form -->
-
 
     <!-- Add Contacts Form -->
     <div class="modal fade" id="addContactsForm" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
@@ -656,7 +558,8 @@
                 </div>
                 <div class="modal-body">
                     <div class="col-4 col-md-6">
-                        <span><i id="search-icon" class="fas fa-search"> </i><input id="user-input" placeholder="Search"></span>
+                        <span><i id="search-icon" class="fas fa-search"> </i><input id="user-input"
+                                                                                    placeholder="Search"></span>
                     </div>
                     <div id="replaceable-content" class="col">
                         {% include 'account/users_search_result.html' %}
@@ -689,9 +592,13 @@
                             <li class="friends-request-item d-flex flex-row justify-content-around">
                                 <h5 class="align-self-center">{{ f_request.sender }}</h5>
                                 <button class="btn btn-default btn-sm" value="{{ f_request.sender.pk }}"
-                                        id="approveFriendRequest" onclick="response_to_friend_request(this, true)">approve</button>
+                                        id="approveFriendRequest" onclick="response_to_friend_request(this, true)">
+                                    approve
+                                </button>
                                 <button class="btn btn-default btn-sm" value="{{ f_request.sender.pk }}"
-                                        id="declineFriendRequest" onclick="response_to_friend_request(this, false)">decline</button>
+                                        id="declineFriendRequest" onclick="response_to_friend_request(this, false)">
+                                    decline
+                                </button>
                             </li>
                         {% endfor %}
                     {% endif %}

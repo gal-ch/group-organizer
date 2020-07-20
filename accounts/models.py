@@ -3,7 +3,6 @@ from django.db import models
 from events.models import Event
 from django.contrib.auth import get_user_model
 User = get_user_model()
-import datetime
 
 COLORS = (
     ('blue', 'blue'),
@@ -16,7 +15,7 @@ COLORS = (
 Group.add_to_class('events', models.ManyToManyField(Event, related_name='events_group'))
 Group.add_to_class('color', models.CharField(max_length=9,
                                              choices=COLORS,
-                                             default="BLUE"))
+                                             default="blue"))
 
 
 class FriendRequest(models.Model):
@@ -45,8 +44,7 @@ class FriendshipManager(models.Manager):
         return qs
 
     def are_friends(self, user1, user2):
-        return bool(Friendship.objects.get(user=user1).friends.filter(
-            user=user2).exists())
+        return bool(Friendship.objects.get(user=user1).friends.filter(user=user2).exists())
 
     def befriend(self, user1, user2):
         Friendship.objects.get_or_create(user=user1).friends.add(

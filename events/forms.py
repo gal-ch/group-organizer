@@ -15,7 +15,7 @@ class EventForm(ModelForm):
 
     class Meta:
         model = Event
-        exclude = ('user', 'start', 'end', 'charge_users','date')
+        exclude = ('user', 'start', 'end', 'charge_users', 'date')
 
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop('request', None)
